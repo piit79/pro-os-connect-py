@@ -1,0 +1,30 @@
+[tool.uv]
+package = true
+
+[project]
+name = "pro-os-connect-py"
+version = "0.7.0"
+authors = [
+  { name="Petr Sedlacek", email="piit@zz9.cz" },
+]
+description = "Library to interface with the Donaldson Bofa Pro OS Connect fume extractor controller"
+keywords=["fume extractor", "donaldson bofa", "bofa", "pro os", "pro os connect"]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+dependencies = [
+  "crccheck >=1.3.1, <1.4.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Network :: Monitoring",
+]
+
+[project.scripts]
+pro-os-connect-cli = "pro_os_connect.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/piit79/pro-os-connect-py"
+Repository = "https://github.com/piit79/pro-os-connect-py"
+Issues = "https://github.com/piit79/pro-os-connect-py/issues"
