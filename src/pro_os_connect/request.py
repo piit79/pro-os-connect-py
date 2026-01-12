@@ -16,13 +16,14 @@ class Request:
     #       | Code     | Code     |     |     | Bytes
     #       +----------+----------+-----+-----+----------
     #       Protocol Header                   | Payload -->
-    def get_protocol_packet(self) -> bytes:
+    def get_protocol_packet(self, payload: bytes) -> bytes:
+        """Create and return the protocol packet from the command payload"""
         protocol_packet = struct.pack("<IIHH",
                                         self.command.value,
                                         StatusCode.NOT_PROCESSED.value,
                                         self.from_addr.value,
                                         self.to_addr.value)
-        return protocol_packet + self.payload
+        return protocol_packet + payload
 
     # bit   0        31 32      63 64      95 96     127
     #       +----------+----------+----------+----------+----------
@@ -30,14 +31,16 @@ class Request:
     #       | phrase   | Length   | CRC      | CRC      | Bytes
     #       +----------+----------+----------+----------+----------
     #       Transport Header                            | Payload -->
-    def get_transport_packet(self, payload: bytes) -> bytes:
-        payload_crc = calculate_crc(payload)
-        header_base = struct.pack("<III", FRAMING_PHRASE, len(payload), payload_crc)
+    def get_transport_packet(self, protocol_packet: bytes) -> bytes:
+        """Create and return the transport packet from the protocol packet"""
+        payload_crc = calculate_crc(protocol_packet)
+        header_base = struct.pack("<III", FRAMING_PHRASE, len(protocol_packet), payload_crc)
         header_crc = calculate_crc(header_base)
         header = header_base + struct.pack("<I", header_crc)
-        return header + payload
+        return header + protocol_packet
 
     def get_packet(self) -> bytes:
-        protocol_packet = self.get_protocol_packet()
+        """Create and return the network packet data"""
+        protocol_packet = self.get_protocol_packet(self.payload)
         transport_packet = self.get_transport_packet(protocol_packet)
         return transport_packet
