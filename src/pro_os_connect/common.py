@@ -51,3 +51,24 @@ class StatusCode(Enum):
     COMMAND_WRONG_SEQUENCE = 0xE0000002  # Command sequence is invalid
     COMMAND_CRC_INVALID = 0xE0000003  # Command CRC mismatch (PROTOCOL_COMMAND_SW_FINISH)
     COMMAND_FILE_EMPTY = 0xE0000004  # Requested File does not exist or is empty
+
+
+TelemetryFields = namedtuple(
+    "TelemetryFields",
+    [
+        "timestamp",
+        "alarms",
+        "setpoint",
+        "flow_rate",
+        "combined_pressure",
+        "pre_pressure",
+        "inlet_pressure",
+        "pump_level",
+        "rcb",
+        "rpb",
+        "rib",
+        "ccb",
+        "cpb",
+        "is_running",
+    ],
+)

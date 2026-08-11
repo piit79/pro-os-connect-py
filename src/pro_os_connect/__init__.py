@@ -8,6 +8,7 @@ import time
 from .request import Command, Request
 from .response import Response, ResponseError, StatusCode
 
+from pro_os_connect.common import TelemetryFields
 
 TCP_PORT = 2345
 
@@ -26,24 +27,6 @@ class ProOSConnectTimeoutError(ProOSConnectError):
 
 class ProOSConnectResponseError(ProOSConnectError):
     pass
-
-
-TelemetryFields = namedtuple('TelemetryFields', [
-    'timestamp',
-    'alarms',
-    'setpoint',
-    'flow_rate',
-    'combined_pressure',
-    'pre_pressure',
-    'inlet_pressure',
-    'pump_level',
-    'rcb',
-    'rpb',
-    'rib',
-    'ccb',
-    'cpb',
-    'is_running',
-])
 
 
 class ProOSConnect:
