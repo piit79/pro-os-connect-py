@@ -34,10 +34,10 @@ TCP_PORT = 2345
 
 
 class ProOSConnectError(Exception):
-    pass
+    """Base class for all Pro OS Connect errors."""
 
 
-class ProOSConnectRequestError(Exception):
+class ProOSConnectRequestError(ProOSConnectError):
     pass
 
 
@@ -62,12 +62,14 @@ class ProOSConnect:
         self.logger = logging.getLogger(__name__)
 
     def connect(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.socket.connect((self.host, self.port))
-            self.socket.setblocking(False)
-        except (OSError, ConnectionRefusedError, socket.gaierror) as e:
-            raise ProOSConnectConnectError(e)
+            sock = socket.create_connection(
+                (self.host, self.port), timeout=self.timeout
+            )
+        except OSError as e:
+            raise ProOSConnectConnectError(e) from e
+        sock.setblocking(False)
+        self.socket = sock
 
     def disconnect(self):
         if self.socket:
@@ -85,9 +87,10 @@ class ProOSConnect:
                 continue
 
             packet = self.socket.recv(4096)  # pyright: ignore[reportOptionalMemberAccess]
+            if not packet:
+                raise ProOSConnectConnectError("Connection closed by device")
             self.logger.debug(f"Received packet: {packet.hex()}")
-            if packet:
-                resp_packet.append(packet)
+            resp_packet.append(packet)
 
         return resp_packet
 
@@ -95,6 +98,17 @@ class ProOSConnect:
         if not self.socket:
             self.connect()
 
+        try:
+            return self._send_request(request)
+        except OSError as e:
+            self.disconnect()
+            raise ProOSConnectConnectError(e) from e
+        except ProOSConnectError:
+            # The stream may hold a partial response, so start fresh next time
+            self.disconnect()
+            raise
+
+    def _send_request(self, request: Request) -> Response | None:
         request_packet = request.get_packet()
         self.logger.debug(f"Sending packet: {request_packet.hex()}")
         self.socket.sendall(request_packet)  # type: ignore
@@ -114,9 +128,11 @@ class ProOSConnect:
 
         if response_packet.status != StatusCode.OK.value:
             self.logger.debug(f"Response status: {response_packet.status}")
-            raise ProOSConnectResponseError(
-                f"Error in response: {StatusCode(response_packet.status).name}"
-            )
+            try:
+                status = StatusCode(response_packet.status).name
+            except ValueError:
+                status = f"unknown status {response_packet.status}"
+            raise ProOSConnectResponseError(f"Error in response: {status}")
 
         return response_packet.get_response()
 
