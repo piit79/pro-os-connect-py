@@ -1,5 +1,5 @@
+from collections import namedtuple
 from enum import Enum
-
 
 FRAMING_PHRASE = 0xB0FAB0FA
 
@@ -11,6 +11,7 @@ class Node(Enum):
 
 
 class Command(Enum):
+    NONE = None
     GET_PROTOCOL_VERSION = 0x00010001
     ECHO = 0x00010002
     REBOOT = 0x00010003
@@ -35,6 +36,7 @@ class Command(Enum):
 
 
 class StatusCode(Enum):
+    NONE = None
     OK = 0x00000000  # Success status, no errors, packet processed successfully
     NOT_PROCESSED = 0x0FFFFFFF  # The initial packet request status
     INTERNAL_ERROR = 0xB0000000  # General error code, usually if internal process has failed in some way

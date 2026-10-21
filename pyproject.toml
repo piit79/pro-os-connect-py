@@ -1,6 +1,6 @@
 [project]
 name = "pro-os-connect-py"
-version = "0.7.0"
+version = "0.8.0"
 authors = [
   { name="Petr Sedlacek", email="piit@zz9.cz" },
 ]
@@ -15,7 +15,6 @@ dependencies = [
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
-    "Topic :: Network :: Monitoring",
 ]
 
 [project.scripts]
