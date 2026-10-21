@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 from collections.abc import Mapping
+from dataclasses import asdict
 from datetime import datetime
 from time import sleep, time
 
@@ -148,7 +149,7 @@ class ProOSConnectCli:
         fields = self.poc.get_telemetry()
         res = fields
         if fields:
-            res = fields._asdict()
+            res = asdict(fields)
             for f, v in res.items():
                 if isinstance(v, float):
                     res[f] = round(v, self.args.precision)

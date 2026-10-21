@@ -91,8 +91,8 @@ class CodecTelemetryFields(CodecStruct):
         """Pack not implemented, this is only a decoder"""
         raise NotImplementedError()
 
-    def unpack(self, payload: bytes) -> tuple:
-        return TelemetryFields(*super().unpack(payload))
+    def unpack(self, payload: bytes) -> TelemetryFields:  # pyright: ignore[reportIncompatibleMethodOverride]
+        return TelemetryFields.from_iterable(super().unpack(payload))
 
 
 class CodecInt(CodecStruct):

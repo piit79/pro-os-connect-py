@@ -1,4 +1,5 @@
-from collections import namedtuple
+from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import Enum
 
 FRAMING_PHRASE = 0xB0FAB0FA
@@ -55,22 +56,24 @@ class StatusCode(Enum):
     COMMAND_FILE_EMPTY = 0xE0000004  # Requested File does not exist or is empty
 
 
-TelemetryFields = namedtuple(
-    "TelemetryFields",
-    [
-        "timestamp",
-        "alarms",
-        "setpoint",
-        "flow_rate",
-        "combined_pressure",
-        "pre_pressure",
-        "inlet_pressure",
-        "pump_level",
-        "rcb",
-        "rpb",
-        "rib",
-        "ccb",
-        "cpb",
-        "is_running",
-    ],
-)
+@dataclass
+class TelemetryFields:
+    timestamp: int
+    alarms: int
+    setpoint: int
+    flow_rate: float
+    combined_pressure: float
+    pre_pressure: float
+    inlet_pressure: float
+    pump_level: int
+    rcb: int
+    rpb: int
+    rib: int
+    ccb: int
+    cpb: int
+    is_running: int
+
+    @classmethod
+    def from_iterable(cls, iterable: Iterable) -> "TelemetryFields":
+        """Create a new instance from an iterable of field values, like namedtuple._make()"""
+        return cls(*iterable)
