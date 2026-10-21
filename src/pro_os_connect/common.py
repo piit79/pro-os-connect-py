@@ -66,11 +66,11 @@ class TelemetryFields:
     pre_pressure: float
     inlet_pressure: float
     pump_level: int
-    rcb: int
-    rpb: int
-    rib: int
-    ccb: int
-    cpb: int
+    real_combined_blockage: int
+    real_pre_blockage: int
+    real_inlet_blockage: int
+    compensated_combined_blockage: int
+    compensated_pre_blockage: int
     is_running: int
 
     @classmethod
