@@ -41,3 +41,38 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The full history and tags are needed to find the previous release
+          fetch-depth: 0
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if previous="$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null)"; then
+            range="$previous..$GITHUB_REF_NAME"
+            compare="**Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_REF_NAME"
+          else
+            range="$GITHUB_REF_NAME"
+            compare=""
+          fi
+          {
+            echo "## Changes"
+            echo
+            git log --no-merges --reverse --pretty='- %s (%h)' "$range"
+            echo
+            echo "$compare"
+          } > notes.md
+          # Replace --notes-file notes.md with --generate-notes if switching to pull requests
+          gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
