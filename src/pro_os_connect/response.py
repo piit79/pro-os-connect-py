@@ -118,11 +118,11 @@ class ResponsePacket:
         calculated_payload_crc = calculate_crc(self.protocol_packet)
         if calculated_payload_crc != payload_crc:
             self.parse_protocol_packet()
-            msg = f"Response payload CRC mismatch: calculated={calculated_payload_crc:x} received={payload_crc:x}"
+            msg = "Response payload CRC mismatch: calculated=%x received=%x"
             if self.command in self.KNOWN_INCORRECT_CRC_COMMANDS:
-                self.logger.warning(msg)
+                self.logger.warning(msg, calculated_payload_crc, payload_crc)
             else:
-                self.logger.error(msg)
+                self.logger.error(msg, calculated_payload_crc, payload_crc)
                 raise ResponsePayloadCrcError("Response payload CRC mismatch")
 
     def parse_protocol_packet(self):

@@ -89,7 +89,7 @@ class ProOSConnect:
             packet = self.socket.recv(4096)  # pyright: ignore[reportOptionalMemberAccess]
             if not packet:
                 raise ProOSConnectConnectError("Connection closed by device")
-            self.logger.debug(f"Received packet: {packet.hex()}")
+            self.logger.debug("Received packet: %s", packet.hex())
             resp_packet.append(packet)
 
         return resp_packet
@@ -110,7 +110,7 @@ class ProOSConnect:
 
     def _send_request(self, request: Request) -> Response | None:
         request_packet = request.get_packet()
-        self.logger.debug(f"Sending packet: {request_packet.hex()}")
+        self.logger.debug("Sending packet: %s", request_packet.hex())
         self.socket.sendall(request_packet)  # type: ignore
 
         self.logger.debug("Waiting for response...")
@@ -127,7 +127,7 @@ class ProOSConnect:
             raise ProOSConnectResponseError(e.description)
 
         if response_packet.status != StatusCode.OK.value:
-            self.logger.debug(f"Response status: {response_packet.status}")
+            self.logger.debug("Response status: %s", response_packet.status)
             try:
                 status = StatusCode(response_packet.status).name
             except ValueError:
