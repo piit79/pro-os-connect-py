@@ -1,7 +1,7 @@
 import logging
 import struct
 from abc import ABC
-from typing import Any, ClassVar
+from typing import Any
 
 from .codecs import Codec
 from .common import FRAMING_PHRASE, Command, Node, StatusCode
@@ -50,14 +50,6 @@ class ResponseCommandNotImplementedError(ResponseError):
 class ResponsePacket:
     TRANSPORT_HEADER_SIZE = 16
     PROTOCOL_HEADER_SIZE = 12
-
-    # List of commands with known incorrect CRC in the response
-    KNOWN_INCORRECT_CRC_COMMANDS: ClassVar = [
-        Command.GET_CPU_SERIAL_NUMBER,
-        Command.GET_SERIAL_NUMBER,
-        Command.GET_SOFTWARE_VERSION,
-        Command.GET_NETWORK_CONFIGURATION,
-    ]
 
     def __init__(self, data: bytes = b""):
         """
@@ -121,13 +113,9 @@ class ResponsePacket:
             raise ResponsePayloadLengthError(msg)
         calculated_payload_crc = calculate_crc(self.protocol_packet)
         if calculated_payload_crc != payload_crc:
-            self.parse_protocol_packet()
             msg = "Response payload CRC mismatch: calculated=%x received=%x"
-            if self.command in self.KNOWN_INCORRECT_CRC_COMMANDS:
-                self.logger.warning(msg, calculated_payload_crc, payload_crc)
-            else:
-                self.logger.error(msg, calculated_payload_crc, payload_crc)
-                raise ResponsePayloadCrcError("Response payload CRC mismatch")
+            self.logger.error(msg, calculated_payload_crc, payload_crc)
+            raise ResponsePayloadCrcError("Response payload CRC mismatch")
 
     def parse_protocol_packet(self):
         self.protocol_header = self.protocol_packet[: self.PROTOCOL_HEADER_SIZE]

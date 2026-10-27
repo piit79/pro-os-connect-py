@@ -140,7 +140,6 @@ class ProOSConnect:
             return None
         return response.result
 
-    # FIXME: Doesn't work for some reason. No response received
     def echo(self, test_payload: bytes | None = None) -> bool:
         if test_payload is None:
             test_payload = b"Test Echo Payload"
@@ -192,21 +191,18 @@ class ProOSConnect:
         response = self.send_request(PumpStopRequest())
         return response is not None
 
-    # FIXME: Response payload CRC mismatch
     def get_software_version(self) -> str | None:
         response = self.send_request(GetSoftwareVersionRequest())
         return (
             response.result if response and isinstance(response.result, str) else None
         )
 
-    # FIXME: Response payload CRC mismatch
     def get_serial_number(self) -> str | None:
         response = self.send_request(GetSerialNumberRequest())
         return (
             response.result if response and isinstance(response.result, str) else None
         )
 
-    # FIXME: Response payload CRC mismatch
     def get_cpu_serial_number(self) -> str | None:
         response = self.send_request(GetCpuSerialNumberRequest())
         return response.result if response else None  # pyright: ignore[reportReturnType]
