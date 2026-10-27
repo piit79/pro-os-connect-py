@@ -21,7 +21,7 @@ COMMANDS = {
     "get_uptime": [],
     "is_running": [],
     "get_time": [],
-    "set_time": [(("time",), {"type": str, "help": "Time to set"})],
+    "set_time": [],
     "pump_start": [],
     "pump_stop": [],
     "get_software_version": [],
@@ -160,7 +160,7 @@ class ProOSConnectCli:
 
     def set_time(self):
         """Set time to current time"""
-        self.poc.set_time(datetime.now())
+        return self.poc.set_time(datetime.now())
 
     def get_network_configuration(self):
         return self.poc.get_network_configuration()

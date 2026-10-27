@@ -109,8 +109,13 @@ class CodecInt(CodecStruct):
 class CodecIsoDateTime(CodecCstr):
     """Encoder/decoder class for an ISO datetime payload in a null-terminated string"""
 
+    def __init__(self, precision: int = 0) -> None:
+        self.precision = precision
+        super().__init__()
+
     def pack(self, data: datetime) -> bytes:  # pyright: ignore[reportIncompatibleMethodOverride]
-        datetime_str = data.isoformat()
+        length = 19 + (1 if self.precision > 0 else 0) + self.precision
+        datetime_str = data.isoformat()[:length]
         return super().pack(datetime_str)
 
     def unpack(self, payload: bytes) -> datetime:  # pyright: ignore[reportIncompatibleMethodOverride]
