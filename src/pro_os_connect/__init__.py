@@ -38,22 +38,24 @@ class ProOSConnectError(Exception):
 
 
 class ProOSConnectRequestError(ProOSConnectError):
-    pass
+    """Error raised while sending or handling a request."""
 
 
 class ProOSConnectConnectError(ProOSConnectRequestError):
-    pass
+    """Error raised while connecting to the device."""
 
 
 class ProOSConnectTimeoutError(ProOSConnectRequestError):
-    pass
+    """Error raised when a timeout occurs while waiting for a response."""
 
 
 class ProOSConnectResponseError(ProOSConnectError):
-    pass
+    """Error raised when a response is received but indicates an error."""
 
 
 class ProOSConnect:
+    """Main class for connecting to a Pro OS device and sending requests."""
+
     def __init__(self, host: str, port: int = TCP_PORT, timeout: float = 2.0):
         self.host = host
         self.port = port
