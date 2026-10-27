@@ -43,6 +43,10 @@ class ResponsePayloadCrcError(ResponseError):
     description = "Response payload CRC error"
 
 
+class ResponseCommandNotImplementedError(ResponseError):
+    description = "Response command not implemented"
+
+
 class ResponsePacket:
     TRANSPORT_HEADER_SIZE = 16
     PROTOCOL_HEADER_SIZE = 12
@@ -140,13 +144,8 @@ class ResponsePacket:
         self.parse_transport_packet()
         self.parse_protocol_packet()
 
-    def get_response(self) -> "Response | None":
-        try:
-            cls = _registry[self.command]
-        except KeyError:
-            raise ResponseError
-
-        return cls(self)
+    def get_response(self) -> "Response":
+        return Response.from_packet(self)
 
 
 class Response(ABC):
@@ -168,6 +167,15 @@ class Response(ABC):
     def unpack(self):
         if self.CODEC is not None:
             self.result = self.CODEC.unpack(self.packet.payload)
+
+    @classmethod
+    def from_packet(cls, packet: ResponsePacket) -> "Response":
+        try:
+            cls = _registry[packet.command]
+        except KeyError:
+            raise ResponseCommandNotImplementedError(f"Command {packet.command} not implemented")
+
+        return cls(packet)
 
 
 @response
