@@ -140,12 +140,12 @@ class ProOSConnect:
             return None
         return response.result
 
-    def echo(self, test_payload: bytes | None = None) -> bool:
+    def echo(self, test_payload: bytes | None = None) -> bool | None:
         if test_payload is None:
             test_payload = b"Test Echo Payload"
         response = self.send_request(EchoRequest(test_payload))
         if response is None:
-            return False
+            return None
         return response.result == test_payload
 
     def reboot(self) -> bool:

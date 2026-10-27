@@ -137,13 +137,16 @@ class ProOSConnectCli:
         test_payload = self.args.payload.encode("utf-8") if self.args.payload else None
         start_time = time()
         res = self.poc.echo(test_payload)
+        if res is None:
+            return None
         if res:
-            rtt = round(
-                (time() - start_time) * 100, 2
-            )  # Round trim time in milliseconds
+            rtt = round((time() - start_time) * 100, 2)  # Round trip time in milliseconds
             self.output(
-                f"Echo response received in {rtt} ms", {"result": True, "time": rtt}
+                f"Echo response received in {rtt} ms", {"success": True, "time": rtt}
             )
+        else:
+            self.error("Echo response incorrect")
+        return self.DONE
 
     def get_telemetry(self):
         fields = self.poc.get_telemetry()
