@@ -127,10 +127,13 @@ class ResponsePacket:
 
     def parse_protocol_packet(self):
         self.protocol_header = self.protocol_packet[: self.PROTOCOL_HEADER_SIZE]
-        command, self.status, self.from_addr, self.to_addr = struct.unpack(
+        command, status, from_addr, to_addr = struct.unpack(
             "<IIHH", self.protocol_header
         )
         self.command = Command(command)
+        self.status = StatusCode(status)
+        self.from_addr = Node(from_addr)
+        self.to_addr = Node(to_addr)
         self.payload = self.protocol_packet[self.PROTOCOL_HEADER_SIZE :]
 
     def parse(self):

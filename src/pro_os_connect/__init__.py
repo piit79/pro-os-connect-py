@@ -128,13 +128,9 @@ class ProOSConnect:
         except ResponseError as e:
             raise ProOSConnectResponseError(e.description)
 
-        if response_packet.status != StatusCode.OK.value:
+        if response_packet.status != StatusCode.OK:
             self.logger.debug("Response status: %s", response_packet.status)
-            try:
-                status = StatusCode(response_packet.status).name
-            except ValueError:
-                status = f"unknown status {response_packet.status}"
-            raise ProOSConnectResponseError(f"Error in response: {status}")
+            raise ProOSConnectResponseError(f"Error in response: {response_packet.status.name}")
 
         return response_packet.get_response()
 
