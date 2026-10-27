@@ -115,7 +115,7 @@ class ProOSConnectCli:
             elif self.command.startswith("is_"):
                 self.json_result_key = self.command[3:]
             else:
-                self.json_result_key = "result"
+                self.json_result_key = "success"
 
     def output(self, data, json_data: Mapping | None = None, error=False):
         if self.args.json:
