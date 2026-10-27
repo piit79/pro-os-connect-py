@@ -129,7 +129,7 @@ class ProOSConnect:
             raise ProOSConnectResponseError(e.description)
 
         if response_packet.status != StatusCode.OK:
-            self.logger.debug("Response status: %s", response_packet.status)
+            self.logger.debug("Response status: %s", response_packet.status.name)
             raise ProOSConnectResponseError(f"Error in response: {response_packet.status.name}")
 
         return response_packet.get_response()
