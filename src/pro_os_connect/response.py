@@ -178,6 +178,11 @@ class EchoResponse(Response):
     CODEC = Codec.null()
 
 
+@response
+class RebootResponse(Response):
+    COMMAND = Command.REBOOT
+
+
 #                           Response payload
 # bit   0                         31 32                       63
 #       +------+------+------+------+------+------+------+------+
