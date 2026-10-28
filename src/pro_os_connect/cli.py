@@ -186,8 +186,9 @@ class ProOSConnectCli:
         return self.DONE
 
     def pro_os_command(self):
-        method = getattr(self.poc, self.command)
-        if method is None:
+        try:
+            method = getattr(self.poc, self.command)
+        except AttributeError:
             self.error(f"Invalid command: {self.command}")
             return
 
