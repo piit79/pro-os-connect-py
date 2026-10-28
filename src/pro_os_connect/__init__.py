@@ -94,7 +94,7 @@ class ProOSConnect:
             if not read_ready:
                 continue
 
-            packet = self.socket.recv(4096)  # pyright: ignore[reportOptionalMemberAccess]
+            packet = self.socket.recv(4096)
             if not packet:
                 raise ProOSConnectConnectError("Connection closed by device")
             self.logger.debug("Received packet: %s", packet.hex())
@@ -217,11 +217,11 @@ class ProOSConnect:
 
     def get_cpu_serial_number(self) -> str | None:
         response = self.send_request(GetCpuSerialNumberRequest())
-        return response.result if response else None  # pyright: ignore[reportReturnType]
+        return response.result if response else None
 
     def get_network_configuration(self) -> Mapping | None:
         response = self.send_request(GetNetworkConfigurationRequest())
-        return response.result if response else None  # pyright: ignore[reportReturnType]
+        return response.result if response else None
 
     def set_setpoint(self, setpoint: int) -> bool:
         response = self.send_request(SetSetpointRequest(setpoint))
