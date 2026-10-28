@@ -2,6 +2,7 @@ import logging
 import select
 import socket
 import time
+from collections.abc import Mapping
 from datetime import datetime
 
 from pro_os_connect.common import TelemetryFields
@@ -218,7 +219,7 @@ class ProOSConnect:
         response = self.send_request(GetCpuSerialNumberRequest())
         return response.result if response else None  # pyright: ignore[reportReturnType]
 
-    def get_network_configuration(self) -> str | None:
+    def get_network_configuration(self) -> Mapping | None:
         response = self.send_request(GetNetworkConfigurationRequest())
         return response.result if response else None  # pyright: ignore[reportReturnType]
 
