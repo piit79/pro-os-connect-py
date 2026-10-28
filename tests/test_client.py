@@ -308,3 +308,35 @@ class TestErrors:
         device.respond(build_packet(Command.GET_TIME, status=0x12345678))
         with pytest.raises(ProOSConnectResponseError):
             client.get_time()
+
+
+class TestConnect:
+    def test_connect_is_idempotent(self, client, device):
+        client.connect()
+        sock = client.socket
+        client.connect()
+        assert client.socket is sock
+
+    def test_connect_force_opens_new_connection(self, client, simulated, device):
+        client.connect()
+        sock = client.socket
+        client.connect(force=True)
+        assert client.socket is not sock
+        sock.close()  # The fake device serves one connection at a time
+        assert client.get_protocol_version() == 1
+        assert device.connections == 2
+
+    def test_connect_force_closes_old_socket(self, client, device):
+        client.connect()
+        sock = client.socket
+        client.connect(force=True)
+        try:
+            assert sock.fileno() == -1
+        finally:
+            sock.close()
+
+    def test_successful_request_keeps_connection(self, client, simulated, caplog):
+        with caplog.at_level("DEBUG", logger="pro_os_connect"):
+            client.get_time()
+        assert client.socket is not None
+        assert "response received successfully" in caplog.text

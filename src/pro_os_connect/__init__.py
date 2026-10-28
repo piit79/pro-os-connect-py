@@ -69,7 +69,15 @@ class ProOSConnect:
         self.socket = None
         self.logger = logging.getLogger(__name__)
 
-    def connect(self):
+    def connect(self, force: bool = False):
+        if self.socket:
+            if not force:
+                self.logger.debug("Already connected to %s:%d", self.host, self.port)
+                return
+            else:
+                self.logger.debug("Force reconnecting to %s:%d", self.host, self.port)
+                self.disconnect()
+
         try:
             sock = socket.create_connection(
                 (self.host, self.port), timeout=self.timeout
@@ -103,8 +111,7 @@ class ProOSConnect:
         return resp_packet
 
     def send_request(self, request: Request) -> Response | None:
-        if not self.socket:
-            self.connect()
+        self.connect()
 
         ok = False
         try:
