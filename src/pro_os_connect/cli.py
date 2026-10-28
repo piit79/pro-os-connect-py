@@ -10,6 +10,8 @@ from time import sleep, time
 from . import ProOSConnect, ProOSConnectRequestError, ProOSConnectResponseError
 from .common import Node
 
+COMMAND_COOLDOWN = 0.100  # Minimum time between commands in seconds
+
 COMMANDS = {
     "get_protocol_version": [],
     "echo": [
@@ -174,7 +176,7 @@ class ProOSConnectCli:
         if not res:
             self.error("Error setting setpoint")
             sys.exit(1)
-        sleep(0.01)  # Wait a bit otherwise the old setpoint will be returned
+        sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
         setpoint = self.get_setpoint()
         if not setpoint:
             self.error("Error getting new setpoint")
