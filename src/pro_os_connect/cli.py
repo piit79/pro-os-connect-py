@@ -197,7 +197,7 @@ class ProOSConnectCli:
             sys.exit(1)
         sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
         setpoint = self.get_setpoint()
-        if not setpoint:
+        if setpoint is None:
             self.error("Error getting new setpoint")
             sys.exit(1)
         self.output(
