@@ -47,6 +47,10 @@ class ResponseCommandNotImplementedError(ResponseError):
     description = "Response command not implemented"
 
 
+class ResponseInternalError(ResponseError):
+    description = "Response internal error"
+
+
 class ResponsePacket:
     TRANSPORT_HEADER_SIZE = 16
     PROTOCOL_HEADER_SIZE = 12
@@ -123,7 +127,10 @@ class ResponsePacket:
             "<IIHH", self.protocol_header
         )
         self.command = Command(command)
-        self.status = StatusCode(status)
+        try:
+            self.status = StatusCode(status)
+        except ValueError:
+            raise ResponseInternalError(f"Invalid status code: {status}")
         self.from_addr = Node(from_addr)
         self.to_addr = Node(to_addr)
         self.payload = self.protocol_packet[self.PROTOCOL_HEADER_SIZE :]

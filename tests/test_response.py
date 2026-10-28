@@ -12,6 +12,7 @@ from pro_os_connect.response import (
     ResponseError,
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
+    ResponseInternalError,
     ResponsePacket,
     ResponsePacketIncompleteError,
     ResponsePayloadCrcError,
@@ -199,13 +200,9 @@ class TestParseInvalid:
         with pytest.raises(ValueError):
             packet.parse()
 
-    @pytest.mark.xfail(
-        raises=ValueError,
-        reason="Unknown status codes raise a bare ValueError instead of a ResponseError",
-    )
     def test_unknown_status_is_response_error(self):
         packet = ResponsePacket(build_packet(Command.GET_TIME, status=0x12345678))
-        with pytest.raises(ResponseError):
+        with pytest.raises(ResponseInternalError):
             packet.parse()
 
 

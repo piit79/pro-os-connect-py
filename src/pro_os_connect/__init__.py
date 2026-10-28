@@ -137,7 +137,7 @@ class ProOSConnect:
             else:
                 raise ProOSConnectResponseError("Response packet incomplete")
         except ResponseError as e:
-            raise ProOSConnectResponseError(e.description)
+            raise ProOSConnectResponseError(f"{e.description}: {e}") from e
 
         if response_packet.status != StatusCode.OK:
             self.logger.debug("Response status: %s", response_packet.status.name)

@@ -304,9 +304,6 @@ class TestErrors:
             client.get_time()
         assert client.socket is None
 
-    @pytest.mark.xfail(
-        reason="Unknown status codes raise a bare ValueError from StatusCode()",
-    )
     def test_unknown_status(self, client, device):
         device.respond(build_packet(Command.GET_TIME, status=0x12345678))
         with pytest.raises(ProOSConnectResponseError):
