@@ -67,7 +67,7 @@ class ProOSConnect:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.socket = None
+        self.socket: socket.socket | None = None
         self.logger = logging.getLogger(__name__)
 
     def connect(self, force: bool = False):
@@ -92,24 +92,6 @@ class ProOSConnect:
         if self.socket:
             self.socket.close()
             self.socket = None
-
-    def get_response_packet(self) -> ResponsePacket:
-        readers = [self.socket]
-        select_timeout = 0.1  # seconds
-        resp_packet = ResponsePacket()
-        start_time = time.time()
-        while not resp_packet.is_valid() and (time.time() - start_time) < self.timeout:
-            read_ready, _, _ = select.select(readers, [], [], select_timeout)
-            if not read_ready:
-                continue
-
-            packet = self.socket.recv(4096)
-            if not packet:
-                raise ProOSConnectConnectError("Connection closed by device")
-            self.logger.debug("Received packet: %s", packet.hex())
-            resp_packet.append(packet)
-
-        return resp_packet
 
     def send_request(self, request: Request) -> Response | None:
         self.connect()
@@ -138,7 +120,7 @@ class ProOSConnect:
         self.socket.sendall(request_packet)  # type: ignore
 
         self.logger.debug("Waiting for response...")
-        response_packet = self.get_response_packet()
+        response_packet = self._get_response_packet()
 
         try:
             response_packet.parse()
@@ -155,6 +137,25 @@ class ProOSConnect:
             raise ProOSConnectResponseError(f"Error in response: {response_packet.status.name}")
 
         return response_packet.get_response()
+
+    def _get_response_packet(self) -> ResponsePacket:
+        assert self.socket is not None  # to prevent type checker errors below
+        readers = [self.socket]
+        select_timeout = 0.1  # seconds
+        resp_packet = ResponsePacket()
+        start_time = time.time()
+        while not resp_packet.is_valid() and (time.time() - start_time) < self.timeout:
+            read_ready, _, _ = select.select(readers, [], [], select_timeout)
+            if not read_ready:
+                continue
+
+            packet = self.socket.recv(4096)
+            if not packet:
+                raise ProOSConnectConnectError("Connection closed by device")
+            self.logger.debug("Received packet: %s", packet.hex())
+            resp_packet.append(packet)
+
+        return resp_packet
 
     def get_protocol_version(self) -> int | None:
         response = self.send_request(GetProtocolVersionRequest())
