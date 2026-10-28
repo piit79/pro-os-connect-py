@@ -126,13 +126,13 @@ class ResponsePacket:
         command, status, from_addr, to_addr = struct.unpack(
             "<IIHH", self.protocol_header
         )
-        self.command = Command(command)
         try:
+            self.command = Command(command)
             self.status = StatusCode(status)
-        except ValueError:
-            raise ResponseInternalError(f"Invalid status code: {status}")
-        self.from_addr = Node(from_addr)
-        self.to_addr = Node(to_addr)
+            self.from_addr = Node(from_addr)
+            self.to_addr = Node(to_addr)
+        except ValueError as e:
+            raise ResponseInternalError(f"Invalid value: {e}")
         self.payload = self.protocol_packet[self.PROTOCOL_HEADER_SIZE :]
 
     def parse(self):

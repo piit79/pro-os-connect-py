@@ -195,13 +195,23 @@ class TestParseInvalid:
         with pytest.raises(ResponsePayloadCrcError):
             ResponsePacket(data).parse()
 
-    def test_unknown_command(self):
-        packet = ResponsePacket(build_packet(0x0001FFFF))
-        with pytest.raises(ValueError):
+    def test_unknown_command_is_response_internal_error(self):
+        packet = ResponsePacket(build_packet(command=0x0001FFFF))
+        with pytest.raises(ResponseInternalError):
             packet.parse()
 
-    def test_unknown_status_is_response_error(self):
-        packet = ResponsePacket(build_packet(Command.GET_TIME, status=0x12345678))
+    def test_unknown_status_is_response_internal_error(self):
+        packet = ResponsePacket(build_packet(command=Command.GET_TIME, status=0x12345678))
+        with pytest.raises(ResponseInternalError):
+            packet.parse()
+
+    def test_unknown_from_addr_is_response_internal_error(self):
+        packet = ResponsePacket(build_packet(Command.GET_TIME, from_addr=42))
+        with pytest.raises(ResponseInternalError):
+            packet.parse()
+
+    def test_unknown_to_addr_is_response_internal_error(self):
+        packet = ResponsePacket(build_packet(command=Command.GET_TIME, to_addr=69))
         with pytest.raises(ResponseInternalError):
             packet.parse()
 
