@@ -24,6 +24,7 @@ from .request import (
 )
 from .response import (
     Response,
+    ResponseCommandNotImplementedError,
     ResponseError,
     ResponsePacket,
     ResponsePacketIncompleteError,
@@ -51,6 +52,10 @@ class ProOSConnectTimeoutError(ProOSConnectRequestError):
 
 class ProOSConnectResponseError(ProOSConnectError):
     """Error raised when a response is received but indicates an error."""
+
+
+class ProOSConnectInternalError(ProOSConnectError):
+    """Error raised when an internal error occurs."""
 
 
 class ProOSConnect:
@@ -100,15 +105,21 @@ class ProOSConnect:
         if not self.socket:
             self.connect()
 
+        ok = False
         try:
-            return self._send_request(request)
+            response = self._send_request(request)
         except OSError as e:
-            self.disconnect()
             raise ProOSConnectConnectError(e) from e
-        except ProOSConnectError:
-            # The stream may hold a partial response, so start fresh next time
-            self.disconnect()
-            raise
+        except ResponseCommandNotImplementedError as e:
+            raise ProOSConnectInternalError(e.description) from e
+        else:
+            ok = True
+            self.logger.debug("Request sent and response received successfully")
+        finally:
+            if not ok:
+                self.disconnect()
+
+        return response
 
     def _send_request(self, request: Request) -> Response | None:
         request_packet = request.get_packet()

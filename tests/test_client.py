@@ -9,6 +9,7 @@ from pro_os_connect import (
     ProOSConnect,
     ProOSConnectConnectError,
     ProOSConnectError,
+    ProOSConnectInternalError,
     ProOSConnectRequestError,
     ProOSConnectResponseError,
     ProOSConnectTimeoutError,
@@ -297,13 +298,9 @@ class TestErrors:
         assert isinstance(exc_info.value.__cause__, BrokenPipeError)
         assert client.socket is None
 
-    @pytest.mark.xfail(
-        reason="get_response() raises ResponseCommandNotImplementedError outside the "
-        "try block, so it escapes as a non-ProOSConnectError and the socket stays open",
-    )
     def test_unexpected_command_in_response(self, client, device):
         device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
-        with pytest.raises(ProOSConnectResponseError):
+        with pytest.raises(ProOSConnectInternalError):
             client.get_time()
         assert client.socket is None
 
