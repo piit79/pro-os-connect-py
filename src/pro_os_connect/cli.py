@@ -12,6 +12,20 @@ from .common import Node
 
 COMMAND_COOLDOWN = 0.100  # Minimum time between commands in seconds
 
+UNSIGNED_LONG_MAX = 2**32 - 1
+
+def unsigned_long(value: str) -> int:
+    """Custom argparse type for non-negative integers."""
+    try:
+        ivalue = int(value)
+        if ivalue < 0:
+            raise ValueError
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not a valid non-negative integer")
+    if ivalue > UNSIGNED_LONG_MAX:
+        raise argparse.ArgumentTypeError(f"{value} is greater than the maximum allowed value of {UNSIGNED_LONG_MAX}")
+    return ivalue
+
 COMMANDS = {
     "get_protocol_version": [],
     "echo": [
@@ -30,7 +44,7 @@ COMMANDS = {
     "get_serial_number": [],
     "get_cpu_serial_number": [],
     "get_network_configuration": [],
-    "set_setpoint": [(("setpoint",), {"type": int, "help": "Setpoint value to set"})],
+    "set_setpoint": [(("setpoint",), {"type": unsigned_long, "help": f"Setpoint value to set (0-{UNSIGNED_LONG_MAX})"})],
 }
 
 

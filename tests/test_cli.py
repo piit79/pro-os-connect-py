@@ -1,12 +1,21 @@
+import argparse
 import functools
 import json
 import logging
+import struct
 from datetime import datetime
 
 import pytest
 
 from pro_os_connect import ProOSConnect, cli
-from pro_os_connect.cli import COMMANDS, ProOSConnectCli, main, output_json, output_text
+from pro_os_connect.cli import (
+    COMMANDS,
+    ProOSConnectCli,
+    main,
+    unsigned_long,
+    output_json,
+    output_text,
+)
 from pro_os_connect.common import Command, StatusCode
 
 from .helpers import build_packet
@@ -82,6 +91,24 @@ class TestOutputHelpers:
         assert json.loads(capsys.readouterr().out) == {"a": [1, True, None]}
 
 
+class TestUnsignedLong:
+    @pytest.mark.parametrize(("value", "expected"), [("0", 0), ("1", 1), ("150", 150), (" 7 ", 7), ("+3", 3), (str(2**32 - 1), 2**32 - 1)])
+    def test_valid(self, value, expected):
+        assert unsigned_long(value) == expected
+
+    @pytest.mark.parametrize("value", ["-1", "-0.5", "1.5", "", "abc", "0x10", "1e3"])
+    def test_invalid(self, value):
+        with pytest.raises(argparse.ArgumentTypeError, match="is not a valid"):
+            unsigned_long(value)
+
+    def test_too_large(self):
+        with pytest.raises(argparse.ArgumentTypeError, match="is greater than the maximum allowed value"):
+            unsigned_long(str(2**32))
+
+    def test_minus_zero_is_zero(self):
+        assert unsigned_long("-0") == 0
+
+
 class TestArguments:
     def test_device_is_required(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["pro-os-connect-cli", "get_time"])
@@ -100,10 +127,11 @@ class TestArguments:
         assert code == 2
         assert "invalid choice" in err
 
-    def test_set_setpoint_requires_int(self, run):
-        code, _, err = run("set_setpoint", "high")
+    @pytest.mark.parametrize("arg", ["high", "-5", "100.5"])
+    def test_set_setpoint_requires_non_negative_int(self, run, arg):
+        code, _, err = run("set_setpoint", arg)
         assert code == 2
-        assert "invalid int value" in err
+        assert f"argument setpoint: {arg} is not a valid non-negative integer" in err
 
     def test_invalid_log_level(self, run):
         code, _, _ = run("-l", "TRACE", "get_time")
