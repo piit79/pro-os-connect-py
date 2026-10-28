@@ -211,7 +211,7 @@ class ProOSConnectCli:
             method = getattr(self.poc, self.command)
         except AttributeError:
             self.error(f"Invalid command: {self.command}")
-            return
+            return self.DONE
 
         return method()
 
