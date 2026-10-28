@@ -140,7 +140,7 @@ class ProOSConnectCli:
         if res is None:
             return None
         if res:
-            rtt = round((time() - start_time) * 100, 2)  # Round trip time in milliseconds
+            rtt = round((time() - start_time) * 1000, 2)  # Round trip time in milliseconds
             self.output(
                 f"Echo response received in {rtt} ms", {"success": True, "time": rtt}
             )

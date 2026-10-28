@@ -269,7 +269,6 @@ class TestJsonOutput:
         assert data["success"] is True
         assert isinstance(data["time"], float)
 
-    @pytest.mark.xfail(reason="Echo round trip time is multiplied by 100 instead of 1000 to get ms")
     def test_echo_round_trip_time_in_ms(self, run, simulated, monkeypatch):
         rtt_ms = 542.0
         clock_start = 10.000
