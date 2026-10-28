@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 import logging
 import struct
 from abc import ABC
@@ -49,6 +50,10 @@ class ResponseCommandNotImplementedError(ResponseError):
 
 class ResponseInternalError(ResponseError):
     description = "Response internal error"
+
+
+class ResponseDecodeError(ResponseError):
+    description = "Response decode error"
 
 
 class ResponsePacket:
@@ -140,7 +145,10 @@ class ResponsePacket:
         self.parse_protocol_packet()
 
     def get_response(self) -> "Response":
-        return Response.from_packet(self)
+        try:
+            return Response.from_packet(self)
+        except (struct.error, UnicodeDecodeError, JSONDecodeError, ValueError) as e:
+            raise ResponseDecodeError(f"Error decoding response: {e}") from e
 
 
 class Response(ABC):

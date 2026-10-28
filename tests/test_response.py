@@ -9,6 +9,7 @@ from pro_os_connect.common import Command, Node, StatusCode, TelemetryFields
 from pro_os_connect.response import (
     Response,
     ResponseCommandNotImplementedError,
+    ResponseDecodeError,
     ResponseError,
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
@@ -285,10 +286,19 @@ class TestResponse:
         assert isinstance(response, resp.GetProtocolVersionResponse)
         assert response.result == 7
 
-    def test_codec_error_propagates(self):
-        packet = ResponsePacket(build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"))
+    @pytest.mark.parametrize(
+        ("command", "payload", "expected"),
+        [
+            (Command.GET_PROTOCOL_VERSION, b"\x01", r"Error decoding response: unpack requires a buffer of 4 bytes"),
+            (Command.GET_SOFTWARE_VERSION, b"\xff\x00", r"Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"),
+            (Command.GET_NETWORK_CONFIGURATION, b"{oops\x00", r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)"),
+            (Command.GET_TIME, b"yesterday\x00", r"Error decoding response: Invalid isoformat string: 'yesterday'"),
+        ],
+    )
+    def test_codec_error_response_decode_error(self, command, payload, expected):
+        packet = ResponsePacket(build_packet(command, payload))
         packet.parse()
-        with pytest.raises(struct.error):
+        with pytest.raises(ResponseDecodeError, match=expected):
             packet.get_response()
 
 

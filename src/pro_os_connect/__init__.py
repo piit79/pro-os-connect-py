@@ -26,6 +26,7 @@ from .request import (
 from .response import (
     Response,
     ResponseCommandNotImplementedError,
+    ResponseDecodeError,
     ResponseError,
     ResponsePacket,
     ResponsePacketIncompleteError,
@@ -120,6 +121,8 @@ class ProOSConnect:
             raise ProOSConnectConnectError(e) from e
         except ResponseCommandNotImplementedError as e:
             raise ProOSConnectInternalError(e.description) from e
+        except ResponseDecodeError as e:
+            raise ProOSConnectResponseError(e) from e
         else:
             ok = True
             self.logger.debug("Request sent and response received successfully")
