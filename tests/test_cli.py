@@ -338,11 +338,11 @@ class TestErrors:
         assert code == 6
         assert "Response error: Response payload CRC error" in err
 
-    def test_no_result_exits_7(self, run, device):
+    def test_no_result_exits_8(self, run, device):
         # A response to a different command leaves the getter without a result
         device.respond(build_packet(Command.GET_SERIAL_NUMBER, b"123\x00"))
         code, _, err = run("get_telemetry")
-        assert code == 7
+        assert code == 8
         assert err == "Command failed, no result received\n"
 
     def test_errors_as_json(self, run, simulated):
@@ -374,16 +374,17 @@ class TestErrors:
         assert code == 1
         assert err == "Error getting new setpoint\n"
 
-    def test_echo_without_response_exits_7(self, run, simulated, monkeypatch):
+    def test_echo_without_response_exits_8(self, run, simulated, monkeypatch):
         monkeypatch.setattr(ProOSConnect, "echo", lambda self, payload: None)
         code, _, err = run("echo")
-        assert code == 7
+        assert code == 8
         assert err == "Command failed, no result received\n"
 
 class TestInternalError:
     def test_unexpected_command_in_response(self, run, device):
         device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
         code, out, err = run("get_time")
-        assert code not in (0, None)
+        assert code == 7
         assert out == ""
+        assert "Client error" in err
         assert "not implemented" in err

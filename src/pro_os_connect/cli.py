@@ -7,7 +7,12 @@ from dataclasses import asdict
 from datetime import datetime
 from time import sleep, time
 
-from . import ProOSConnect, ProOSConnectRequestError, ProOSConnectResponseError
+from . import (
+    ProOSConnect,
+    ProOSConnectError,
+    ProOSConnectRequestError,
+    ProOSConnectResponseError,
+)
 from .common import Node
 
 COMMAND_COOLDOWN = 0.100  # Minimum time between commands in seconds
@@ -221,6 +226,9 @@ class ProOSConnectCli:
         except ProOSConnectResponseError as e:
             self.error(f"Response error: {e}")
             sys.exit(6)
+        except ProOSConnectError as e:
+            self.error(f"Client error: {e}")
+            sys.exit(7)
 
         match result:
             case self.DONE:
@@ -228,7 +236,7 @@ class ProOSConnectCli:
                 return
             case None:
                 self.error("Command failed, no result received")
-                sys.exit(7)
+                sys.exit(8)
 
         self.ensure_json_result_key()
         self.output(result)
