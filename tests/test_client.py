@@ -14,8 +14,10 @@ from pro_os_connect import (
     ProOSConnectResponseError,
     ProOSConnectTimeoutError,
 )
-from pro_os_connect.common import Command, StatusCode, TelemetryFields
+from pro_os_connect import response as resp
+from pro_os_connect.common import FRAMING_PHRASE, Command, StatusCode, TelemetryFields
 from pro_os_connect.request import GetTimeRequest
+from pro_os_connect.util import calculate_crc
 
 from .helpers import build_packet, parse_request
 
@@ -340,3 +342,115 @@ class TestConnect:
             client.get_time()
         assert client.socket is not None
         assert "response received successfully" in caplog.text
+
+
+class TestErrorDetails:
+    @pytest.mark.parametrize(
+        ("packet", "cause", "message"),
+        [
+            (
+                build_packet(Command.GET_TIME, framing_phrase=0x12345678),
+                resp.ResponseFramingPhraseError,
+                f"Invalid framing phrase: Response framing phrase invalid: {0x12345678}",
+            ),
+            (
+                build_packet(Command.GET_TIME, b"abcd", payload_crc=1),
+                resp.ResponsePayloadCrcError,
+                "Response payload CRC error: Response payload CRC mismatch",
+            ),
+            (
+                build_packet(Command.GET_TIME, status=0x12345677),
+                resp.ResponseInternalError,
+                f"Response internal error: Invalid value: {0x12345677} is not a valid StatusCode",
+            ),
+        ],
+        ids=["framing", "payload-crc", "unknown-status"],
+    )
+    def test_response_error_message_and_cause(self, client, device, packet, cause, message):
+        device.respond(packet)
+        with pytest.raises(ProOSConnectResponseError) as exc_info:
+            client.get_time()
+        assert str(exc_info.value) == message
+        assert type(exc_info.value.__cause__) is cause
+        assert client.socket is None
+
+    def test_internal_error(self, client, device):
+        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+        with pytest.raises(ProOSConnectInternalError, match="Response command not implemented") as exc_info:
+            client.get_time()
+        assert isinstance(exc_info.value, ProOSConnectError)
+        assert not isinstance(exc_info.value, (ProOSConnectRequestError, ProOSConnectResponseError))
+        assert type(exc_info.value.__cause__) is resp.ResponseCommandNotImplementedError
+
+    def test_recovers_after_internal_error(self, client, simulated, device):
+        handler = device.handler
+        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+        with pytest.raises(ProOSConnectInternalError):
+            client.get_time()
+        device.handler = handler
+        assert client.get_protocol_version() == 1
+        assert device.connections == 2
+
+    def test_invalid_request_argument_disconnects(self, client, simulated, device):
+        with pytest.raises(struct.error):
+            client.set_setpoint(-1)
+        assert client.socket is None
+        assert device.requests == []
+
+
+def build_raw_packet(protocol_packet: bytes) -> bytes:
+    """Wrap an arbitrary protocol packet in a valid transport header"""
+    header = struct.pack("<III", FRAMING_PHRASE, len(protocol_packet), calculate_crc(protocol_packet))
+    return header + struct.pack("<I", calculate_crc(header)) + protocol_packet
+
+
+class TestMalformedResponses:
+    """A well-framed response with contents the library can't decode should raise a ProOSConnectError"""
+
+    def test_unknown_command_code(self, client, device):
+        cmd = 0x0001FFFF
+        device.respond(build_packet(cmd))
+        with pytest.raises(ProOSConnectResponseError, match=f"Response internal error: Invalid value: {cmd} is not a valid Command"):
+            client.get_time()
+
+    def test_unknown_node_address(self, client, device):
+        device.respond(
+            build_raw_packet(struct.pack("<IIHH", Command.GET_TIME.value, StatusCode.OK.value, 9, 3))
+        )
+        with pytest.raises(ProOSConnectResponseError, match="Response internal error: Invalid value: 9 is not a valid Node"):
+            client.get_time()
+
+    def test_short_payload(self, client, device):
+        device.respond(build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"))
+        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: unpack requires a buffer of 4 bytes"):
+            client.get_protocol_version()
+
+    def test_invalid_utf8(self, client, device):
+        device.respond(build_packet(Command.GET_SOFTWARE_VERSION, b"\xff\x00"))
+        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"):
+            client.get_software_version()
+
+    def test_invalid_json(self, client, device):
+        device.respond(build_packet(Command.GET_NETWORK_CONFIGURATION, b"{oops\x00"))
+        with pytest.raises(ProOSConnectResponseError, match=r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)"):
+            client.get_network_configuration()
+
+    def test_invalid_time(self, client, device):
+        device.respond(build_packet(Command.GET_TIME, b"yesterday\x00"))
+        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: Invalid isoformat string: 'yesterday'"):
+            client.get_time()
+
+    @pytest.mark.parametrize(
+        ("packet", "method"),
+        [
+            (build_packet(0x0001FFFF), "get_time"),
+            (build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"), "get_protocol_version"),
+            (build_packet(Command.GET_NETWORK_CONFIGURATION, b"{oops\x00"), "get_network_configuration"),
+        ],
+        ids=["unknown-command", "short-payload", "invalid-json"],
+    )
+    def test_client_disconnects(self, client, device, packet, method):
+        device.respond(packet)
+        with pytest.raises(Exception):  # noqa: B017 - the type is covered by the xfails above
+            getattr(client, method)()
+        assert client.socket is None
