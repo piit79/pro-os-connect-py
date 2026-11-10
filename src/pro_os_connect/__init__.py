@@ -102,7 +102,7 @@ class ProOSConnect:
         except OSError as e:
             raise ProOSConnectConnectError(e) from e
         except ResponseCommandNotImplementedError as e:
-            raise ProOSConnectInternalError(e.description) from e
+            raise ProOSConnectInternalError(e) from e
         except ResponseDecodeError as e:
             raise ProOSConnectResponseError(e) from e
         else:

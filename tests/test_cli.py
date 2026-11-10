@@ -2,7 +2,6 @@ import argparse
 import functools
 import json
 import logging
-import struct
 from datetime import datetime
 
 import pytest
@@ -12,9 +11,9 @@ from pro_os_connect.cli import (
     COMMANDS,
     ProOSConnectCli,
     main,
-    unsigned_long,
     output_json,
     output_text,
+    unsigned_long,
 )
 from pro_os_connect.common import Command, StatusCode
 
@@ -60,8 +59,10 @@ def run(clients, monkeypatch, capsys):
         except SystemExit as e:
             code = e.code
         finally:
+            left_open = any(poc.socket is not None for poc in clients)
             for poc in clients:
                 poc.disconnect()
+        assert not left_open, "CLI left connection(s) open"
         out, err = capsys.readouterr()
         return code, out, err
 
@@ -251,7 +252,7 @@ class TestTextOutput:
     def test_echo_incorrect(self, run, device):
         device.respond(build_packet(Command.ECHO, b"wrong"))
         code, out, err = run("echo")
-        assert (code, out, err) == (0, "", "Echo response incorrect\n")
+        assert (code, out, err) == (9, "", "Echo response incorrect\n")
 
 
 class TestJsonOutput:
@@ -308,7 +309,7 @@ class TestJsonOutput:
     def test_echo_incorrect(self, run, device):
         device.respond(build_packet(Command.ECHO, b"wrong"))
         code, out, _ = run("-j", "echo")
-        assert code == 0
+        assert code == 9
         assert json.loads(out) == {"success": False, "error": "Echo response incorrect"}
 
 
@@ -338,12 +339,12 @@ class TestErrors:
         assert code == 6
         assert "Response error: Response payload CRC error" in err
 
-    def test_no_result_exits_8(self, run, device):
+    def test_no_result_exits_9(self, run, device):
         # A response to a different command leaves the getter without a result
         device.respond(build_packet(Command.GET_SERIAL_NUMBER, b"123\x00"))
         code, _, err = run("get_telemetry")
-        assert code == 8
-        assert err == "Command failed, no result received\n"
+        assert code == 9
+        assert err == "No result received\n"
 
     def test_errors_as_json(self, run, simulated):
         simulated.status = StatusCode.INVALID_COMMAND
@@ -364,21 +365,21 @@ class TestErrors:
     def test_set_setpoint_reports_failure(self, run, simulated, monkeypatch):
         monkeypatch.setattr(ProOSConnect, "set_setpoint", lambda self, setpoint: False)
         code, _, err = run("set_setpoint", "100")
-        assert code == 1
+        assert code == 9
         assert err == "Error setting setpoint\n"
 
     def test_set_setpoint_cannot_read_back(self, run, simulated, monkeypatch):
         monkeypatch.setattr(cli, "sleep", lambda seconds: None)
         monkeypatch.setattr(ProOSConnect, "get_telemetry", lambda self: None)
         code, _, err = run("set_setpoint", "100")
-        assert code == 1
+        assert code == 9
         assert err == "Error getting new setpoint\n"
 
-    def test_echo_without_response_exits_8(self, run, simulated, monkeypatch):
+    def test_echo_without_response_exits_9(self, run, simulated, monkeypatch):
         monkeypatch.setattr(ProOSConnect, "echo", lambda self, payload: None)
         code, _, err = run("echo")
-        assert code == 8
-        assert err == "Command failed, no result received\n"
+        assert code == 9
+        assert err == "No result received\n"
 
 class TestInternalError:
     def test_unexpected_command_in_response(self, run, device):
@@ -386,5 +387,4 @@ class TestInternalError:
         code, out, err = run("get_time")
         assert code == 7
         assert out == ""
-        assert "Client error" in err
-        assert "not implemented" in err
+        assert err == "Internal error: Response command SOFTWARE_UPDATE_START not implemented\n"

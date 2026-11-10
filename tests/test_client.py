@@ -376,7 +376,7 @@ class TestErrorDetails:
 
     def test_internal_error(self, client, device):
         device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
-        with pytest.raises(ProOSConnectInternalError, match="Response command not implemented") as exc_info:
+        with pytest.raises(ProOSConnectInternalError, match="Response command SOFTWARE_UPDATE_START not implemented") as exc_info:
             client.get_time()
         assert isinstance(exc_info.value, ProOSConnectError)
         assert not isinstance(exc_info.value, (ProOSConnectRequestError, ProOSConnectResponseError))

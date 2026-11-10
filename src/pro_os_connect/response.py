@@ -174,11 +174,11 @@ class Response(ABC):
     @classmethod
     def from_packet(cls, packet: ResponsePacket) -> "Response":
         try:
-            cls = _registry[packet.command]
+            resp_cls = _registry[packet.command]
         except KeyError:
-            raise ResponseCommandNotImplementedError(f"Command {packet.command} not implemented")
+            raise ResponseCommandNotImplementedError(f"Response command {packet.command.name} not implemented") from None
 
-        return cls(packet)
+        return resp_cls(packet)
 
 
 @response

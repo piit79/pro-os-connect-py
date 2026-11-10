@@ -10,6 +10,7 @@ from time import sleep, time
 from . import (
     ProOSConnect,
     ProOSConnectError,
+    ProOSConnectInternalError,
     ProOSConnectRequestError,
     ProOSConnectResponseError,
 )
@@ -18,6 +19,11 @@ from .common import Node
 COMMAND_COOLDOWN = 0.100  # Minimum time between commands in seconds
 
 UNSIGNED_LONG_MAX = 2**32 - 1
+
+
+class CliError(Exception):
+    """Exception raised from the ProOSConnectCli class"""
+
 
 def unsigned_long(value: str) -> int:
     """Custom argparse type for non-negative integers."""
@@ -166,7 +172,7 @@ class ProOSConnectCli:
                 f"Echo response received in {rtt} ms", {"success": True, "time": rtt}
             )
         else:
-            self.error("Echo response incorrect")
+            raise CliError("Echo response incorrect")
         return self.DONE
 
     def get_telemetry(self):
@@ -193,13 +199,11 @@ class ProOSConnectCli:
     def set_setpoint(self):
         res = self.poc.set_setpoint(self.args.setpoint)
         if not res:
-            self.error("Error setting setpoint")
-            sys.exit(1)
+            raise CliError("Error setting setpoint")
         sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
         setpoint = self.get_setpoint()
         if setpoint is None:
-            self.error("Error getting new setpoint")
-            sys.exit(1)
+            raise CliError("Error getting new setpoint")
         self.output(
             f"Setpoint set to {setpoint}",
             {"success": res, "setpoint": setpoint},
@@ -210,42 +214,48 @@ class ProOSConnectCli:
         try:
             method = getattr(self.poc, self.command)
         except AttributeError:
-            self.error(f"Invalid command: {self.command}")
-            return self.DONE
+            raise CliError(f"Invalid command: {self.command}") from None
 
         return method()
 
-    def run(self):
+    def run(self) -> int:
         method = getattr(self, self.command, self.pro_os_command)
+        exit_code = 0
 
         try:
             result = method()
+            if result is None:
+                raise CliError("No result received")
         except ProOSConnectRequestError as e:
             self.error(f"Error sending request: {e}")
-            sys.exit(5)
+            exit_code = 5
         except ProOSConnectResponseError as e:
             self.error(f"Response error: {e}")
-            sys.exit(6)
+            exit_code = 6
+        except ProOSConnectInternalError as e:
+            self.error(f"Internal error: {e}")
+            exit_code = 7
         except ProOSConnectError as e:
+            # Catch all for the future, just in case
             self.error(f"Client error: {e}")
-            sys.exit(7)
+            exit_code = 8
+        except CliError as e:
+            self.error(str(e))
+            exit_code = 9
+        else:
+            if result is not self.DONE:
+                self.ensure_json_result_key()
+                self.output(result)
+        finally:
+            self.poc.disconnect()
 
-        match result:
-            case self.DONE:
-                # Output was handled by the method
-                return
-            case None:
-                self.error("Command failed, no result received")
-                sys.exit(8)
-
-        self.ensure_json_result_key()
-        self.output(result)
+        return exit_code
 
 
 def main():
     cli = ProOSConnectCli()
-    cli.run()
-
+    exit_code = cli.run()
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()
