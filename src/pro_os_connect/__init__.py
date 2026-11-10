@@ -80,9 +80,7 @@ class ProOSConnect:
                 self.disconnect()
 
         try:
-            sock = socket.create_connection(
-                (self.host, self.port), timeout=self.timeout
-            )
+            sock = socket.create_connection((self.host, self.port), timeout=self.timeout)
         except OSError as e:
             raise ProOSConnectConnectError(e) from e
         sock.setblocking(False)
@@ -126,9 +124,9 @@ class ProOSConnect:
             response_packet.parse()
         except ResponsePacketIncompleteError:
             if not response_packet.has_data():
-                raise ProOSConnectTimeoutError("Timeout waiting for response")
+                raise ProOSConnectTimeoutError("Timeout waiting for response") from None
             else:
-                raise ProOSConnectResponseError("Response packet incomplete")
+                raise ProOSConnectResponseError("Response packet incomplete") from None
         except ResponseError as e:
             raise ProOSConnectResponseError(f"{e.description}: {e}") from e
 
@@ -177,11 +175,7 @@ class ProOSConnect:
 
     def get_telemetry(self) -> TelemetryFields | None:
         response = self.send_request(GetTelemetryRequest())
-        return (
-            response.result
-            if response and isinstance(response.result, TelemetryFields)
-            else None
-        )
+        return response.result if response and isinstance(response.result, TelemetryFields) else None
 
     def get_uptime(self) -> int | None:
         """Return device uptime in seconds."""
@@ -196,11 +190,7 @@ class ProOSConnect:
     def get_time(self) -> datetime | None:
         """Return device time as datetime object"""
         response = self.send_request(GetTimeRequest())
-        return (
-            response.result
-            if response and isinstance(response.result, datetime)
-            else None
-        )
+        return response.result if response and isinstance(response.result, datetime) else None
 
     def set_time(self, date_obj: datetime) -> bool:
         response = self.send_request(SetTimeRequest(date_obj))
@@ -216,15 +206,11 @@ class ProOSConnect:
 
     def get_software_version(self) -> str | None:
         response = self.send_request(GetSoftwareVersionRequest())
-        return (
-            response.result if response and isinstance(response.result, str) else None
-        )
+        return response.result if response and isinstance(response.result, str) else None
 
     def get_serial_number(self) -> str | None:
         response = self.send_request(GetSerialNumberRequest())
-        return (
-            response.result if response and isinstance(response.result, str) else None
-        )
+        return response.result if response and isinstance(response.result, str) else None
 
     def get_cpu_serial_number(self) -> str | None:
         response = self.send_request(GetCpuSerialNumberRequest())

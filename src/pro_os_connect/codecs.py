@@ -1,7 +1,8 @@
 import json
 import struct
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 
 from .common import TelemetryFields
 
@@ -41,11 +42,13 @@ class Codec(ABC):
     def json_cstr(cls):
         return CodecCstrJson()
 
+    @abstractmethod
     def pack(self, data) -> bytes:
-        raise NotImplementedError
+        """Encode a value to bytes"""
 
-    def unpack(self, payload: bytes):
-        raise NotImplementedError
+    @abstractmethod
+    def unpack(self, payload: bytes) -> Any:
+        """Decode bytes to a value"""
 
 
 class CodecNull(Codec):

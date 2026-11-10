@@ -50,7 +50,9 @@ class StatusCode(Enum):
     INVALID_COMMAND = 0xC0000002  # Command was not found or not supported
     WRITE_PROTECTED = 0xC0000003  # If Command was rejected because the iQ2 is configured in a read only state
     COMMAND_BAD_ARG = 0xE0000000  # Requested command has invalid argument
-    COMMAND_NOT_IN_PROGRESS = 0xE0000001  # Requested command has been called out of order (PROTOCOL_COMMAND_FILE_GET ***)
+    COMMAND_NOT_IN_PROGRESS = (
+        0xE0000001  # Requested command has been called out of order (PROTOCOL_COMMAND_FILE_GET ***)
+    )
     COMMAND_WRONG_SEQUENCE = 0xE0000002  # Command sequence is invalid
     COMMAND_CRC_INVALID = 0xE0000003  # Command CRC mismatch (PROTOCOL_COMMAND_SW_FINISH)
     COMMAND_FILE_EMPTY = 0xE0000004  # Requested File does not exist or is empty

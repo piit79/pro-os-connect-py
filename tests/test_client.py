@@ -96,9 +96,7 @@ class TestCommands:
     def test_get_protocol_version(self, client, simulated):
         assert client.get_protocol_version() == 1
 
-    @pytest.mark.parametrize(
-        "payload", [b"", b"A", b"AB", b"ABC", b"ABCD", b"ABCDE", bytes(range(256))]
-    )
+    @pytest.mark.parametrize("payload", [b"", b"A", b"AB", b"ABC", b"ABCD", b"ABCDE", bytes(range(256))])
     def test_echo(self, client, simulated, device, payload):
         assert client.echo(payload) is True
         assert parse_request(device.requests[-1])[3] == payload
@@ -157,7 +155,10 @@ class TestCommands:
         assert client.get_cpu_serial_number() == "5767072d39314637424e79137d2e5454"
 
     def test_get_network_configuration(self, client, simulated):
-        assert client.get_network_configuration() == {"manual": {}, "write_enabled": True}
+        assert client.get_network_configuration() == {
+            "manual": {},
+            "write_enabled": True,
+        }
 
     def test_set_setpoint(self, client, simulated, device):
         assert client.set_setpoint(175) is True
@@ -244,7 +245,10 @@ class TestErrors:
     @pytest.mark.parametrize(
         ("packet", "message"),
         [
-            (build_packet(Command.GET_TIME, framing_phrase=0x12345678), "framing phrase"),
+            (
+                build_packet(Command.GET_TIME, framing_phrase=0x12345678),
+                "framing phrase",
+            ),
             (build_packet(Command.GET_TIME, header_crc=1), "header CRC"),
             (build_packet(Command.GET_TIME, b"abcd", payload_crc=1), "payload CRC"),
             (build_packet(Command.GET_TIME) + b"junk", "length"),
@@ -258,7 +262,9 @@ class TestErrors:
         assert client.socket is None
 
     @pytest.mark.parametrize(
-        "status", [s for s in StatusCode if s not in (StatusCode.NONE, StatusCode.OK)], ids=lambda s: s.name
+        "status",
+        [s for s in StatusCode if s not in (StatusCode.NONE, StatusCode.OK)],
+        ids=lambda s: s.name,
     )
     def test_error_status(self, client, simulated, status):
         simulated.status = status
@@ -376,7 +382,10 @@ class TestErrorDetails:
 
     def test_internal_error(self, client, device):
         device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
-        with pytest.raises(ProOSConnectInternalError, match="Response command SOFTWARE_UPDATE_START not implemented") as exc_info:
+        with pytest.raises(
+            ProOSConnectInternalError,
+            match="Response command SOFTWARE_UPDATE_START not implemented",
+        ) as exc_info:
             client.get_time()
         assert isinstance(exc_info.value, ProOSConnectError)
         assert not isinstance(exc_info.value, (ProOSConnectRequestError, ProOSConnectResponseError))
@@ -410,42 +419,64 @@ class TestMalformedResponses:
     def test_unknown_command_code(self, client, device):
         cmd = 0x0001FFFF
         device.respond(build_packet(cmd))
-        with pytest.raises(ProOSConnectResponseError, match=f"Response internal error: Invalid value: {cmd} is not a valid Command"):
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match=f"Response internal error: Invalid value: {cmd} is not a valid Command",
+        ):
             client.get_time()
 
     def test_unknown_node_address(self, client, device):
-        device.respond(
-            build_raw_packet(struct.pack("<IIHH", Command.GET_TIME.value, StatusCode.OK.value, 9, 3))
-        )
-        with pytest.raises(ProOSConnectResponseError, match="Response internal error: Invalid value: 9 is not a valid Node"):
+        device.respond(build_raw_packet(struct.pack("<IIHH", Command.GET_TIME.value, StatusCode.OK.value, 9, 3)))
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match="Response internal error: Invalid value: 9 is not a valid Node",
+        ):
             client.get_time()
 
     def test_short_payload(self, client, device):
         device.respond(build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"))
-        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: unpack requires a buffer of 4 bytes"):
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match="Error decoding response: unpack requires a buffer of 4 bytes",
+        ):
             client.get_protocol_version()
 
     def test_invalid_utf8(self, client, device):
         device.respond(build_packet(Command.GET_SOFTWARE_VERSION, b"\xff\x00"))
-        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"):
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match="Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+        ):
             client.get_software_version()
 
     def test_invalid_json(self, client, device):
         device.respond(build_packet(Command.GET_NETWORK_CONFIGURATION, b"{oops\x00"))
-        with pytest.raises(ProOSConnectResponseError, match=r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)"):
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match=r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)",
+        ):
             client.get_network_configuration()
 
     def test_invalid_time(self, client, device):
         device.respond(build_packet(Command.GET_TIME, b"yesterday\x00"))
-        with pytest.raises(ProOSConnectResponseError, match="Error decoding response: Invalid isoformat string: 'yesterday'"):
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match="Error decoding response: Invalid isoformat string: 'yesterday'",
+        ):
             client.get_time()
 
     @pytest.mark.parametrize(
         ("packet", "method"),
         [
             (build_packet(0x0001FFFF), "get_time"),
-            (build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"), "get_protocol_version"),
-            (build_packet(Command.GET_NETWORK_CONFIGURATION, b"{oops\x00"), "get_network_configuration"),
+            (
+                build_packet(Command.GET_PROTOCOL_VERSION, b"\x01"),
+                "get_protocol_version",
+            ),
+            (
+                build_packet(Command.GET_NETWORK_CONFIGURATION, b"{oops\x00"),
+                "get_network_configuration",
+            ),
         ],
         ids=["unknown-command", "short-payload", "invalid-json"],
     )

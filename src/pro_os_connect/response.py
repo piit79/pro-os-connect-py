@@ -1,7 +1,6 @@
-from json import JSONDecodeError
 import logging
 import struct
-from abc import ABC
+from json import JSONDecodeError
 from typing import Any
 
 from .codecs import Codec
@@ -103,9 +102,7 @@ class ResponsePacket:
             raise ResponsePacketIncompleteError()
         self.transport_header = self.data[: self.TRANSPORT_HEADER_SIZE]
         self.protocol_packet = self.data[self.TRANSPORT_HEADER_SIZE :]
-        framing_phrase, payload_length, payload_crc, header_crc = struct.unpack(
-            "<IIII", self.transport_header
-        )
+        framing_phrase, payload_length, payload_crc, header_crc = struct.unpack("<IIII", self.transport_header)
         if framing_phrase != FRAMING_PHRASE:
             msg = f"Response framing phrase invalid: {framing_phrase}"
             self.logger.error(msg)
@@ -128,16 +125,14 @@ class ResponsePacket:
 
     def parse_protocol_packet(self):
         self.protocol_header = self.protocol_packet[: self.PROTOCOL_HEADER_SIZE]
-        command, status, from_addr, to_addr = struct.unpack(
-            "<IIHH", self.protocol_header
-        )
+        command, status, from_addr, to_addr = struct.unpack("<IIHH", self.protocol_header)
         try:
             self.command = Command(command)
             self.status = StatusCode(status)
             self.from_addr = Node(from_addr)
             self.to_addr = Node(to_addr)
         except ValueError as e:
-            raise ResponseInternalError(f"Invalid value: {e}")
+            raise ResponseInternalError(f"Invalid value: {e}") from None
         self.payload = self.protocol_packet[self.PROTOCOL_HEADER_SIZE :]
 
     def parse(self):
@@ -151,7 +146,9 @@ class ResponsePacket:
             raise ResponseDecodeError(f"Error decoding response: {e}") from e
 
 
-class Response(ABC):
+class Response:
+    """Base class for responses. Subclasses must set COMMAND."""
+
     COMMAND = Command.NONE
     CODEC: Codec | None = None
 
@@ -160,6 +157,8 @@ class Response(ABC):
         :param packet: Response network packet data
         :type packet: ResponsePacket
         """
+        if self.COMMAND is Command.NONE:
+            raise TypeError(f"{type(self).__name__} must define COMMAND")
         self.packet = packet
         self.status: StatusCode = self.packet.status
         self.from_addr = self.packet.from_addr
@@ -176,7 +175,9 @@ class Response(ABC):
         try:
             resp_cls = _registry[packet.command]
         except KeyError:
-            raise ResponseCommandNotImplementedError(f"Response command {packet.command.name} not implemented") from None
+            raise ResponseCommandNotImplementedError(
+                f"Response command {packet.command.name} not implemented"
+            ) from None
 
         return resp_cls(packet)
 

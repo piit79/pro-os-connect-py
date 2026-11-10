@@ -32,16 +32,15 @@ def unsigned_long(value: str) -> int:
         if ivalue < 0:
             raise ValueError
     except ValueError:
-        raise argparse.ArgumentTypeError(f"{value} is not a valid non-negative integer")
+        raise argparse.ArgumentTypeError(f"{value} is not a valid non-negative integer") from None
     if ivalue > UNSIGNED_LONG_MAX:
         raise argparse.ArgumentTypeError(f"{value} is greater than the maximum allowed value of {UNSIGNED_LONG_MAX}")
     return ivalue
 
+
 COMMANDS = {
     "get_protocol_version": [],
-    "echo": [
-        (("--payload", "-p"), {"type": str, "help": "Test payload for echo command"})
-    ],
+    "echo": [(("--payload", "-p"), {"type": str, "help": "Test payload for echo command"})],
     "reboot": [],
     "get_telemetry": [],
     "get_setpoint": [],
@@ -55,7 +54,15 @@ COMMANDS = {
     "get_serial_number": [],
     "get_cpu_serial_number": [],
     "get_network_configuration": [],
-    "set_setpoint": [(("setpoint",), {"type": unsigned_long, "help": f"Setpoint value to set (0-{UNSIGNED_LONG_MAX})"})],
+    "set_setpoint": [
+        (
+            ("setpoint",),
+            {
+                "type": unsigned_long,
+                "help": f"Setpoint value to set (0-{UNSIGNED_LONG_MAX})",
+            },
+        )
+    ],
 }
 
 
@@ -95,9 +102,7 @@ class ProOSConnectCli:
             help="Hostname or IP address of the Pro OS Connect device",
             required=True,
         )
-        parser.add_argument(
-            "--json", "-j", action="store_true", help="Output in JSON format"
-        )
+        parser.add_argument("--json", "-j", action="store_true", help="Output in JSON format")
         parser.add_argument(
             "--node",
             "-n",
@@ -117,9 +122,7 @@ class ProOSConnectCli:
             choices=["ERROR", "WARNING", "INFO", "DEBUG"],
             help="Logging level",
         )
-        subparsers = parser.add_subparsers(
-            required=True, help="Command to execute", dest="command"
-        )
+        subparsers = parser.add_subparsers(required=True, help="Command to execute", dest="command")
 
         for cmd_name, cmd_args in COMMANDS.items():
             cmd_parser = subparsers.add_parser(cmd_name, help=f"{cmd_name} help")
@@ -168,9 +171,7 @@ class ProOSConnectCli:
             return None
         if res:
             rtt = round((time() - start_time) * 1000, 2)  # Round trip time in milliseconds
-            self.output(
-                f"Echo response received in {rtt} ms", {"success": True, "time": rtt}
-            )
+            self.output(f"Echo response received in {rtt} ms", {"success": True, "time": rtt})
         else:
             raise CliError("Echo response incorrect")
         return self.DONE
@@ -256,6 +257,7 @@ def main():
     cli = ProOSConnectCli()
     exit_code = cli.run()
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

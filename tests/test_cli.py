@@ -93,7 +93,17 @@ class TestOutputHelpers:
 
 
 class TestUnsignedLong:
-    @pytest.mark.parametrize(("value", "expected"), [("0", 0), ("1", 1), ("150", 150), (" 7 ", 7), ("+3", 3), (str(2**32 - 1), 2**32 - 1)])
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("0", 0),
+            ("1", 1),
+            ("150", 150),
+            (" 7 ", 7),
+            ("+3", 3),
+            (str(2**32 - 1), 2**32 - 1),
+        ],
+    )
     def test_valid(self, value, expected):
         assert unsigned_long(value) == expected
 
@@ -103,7 +113,10 @@ class TestUnsignedLong:
             unsigned_long(value)
 
     def test_too_large(self):
-        with pytest.raises(argparse.ArgumentTypeError, match="is greater than the maximum allowed value"):
+        with pytest.raises(
+            argparse.ArgumentTypeError,
+            match="is greater than the maximum allowed value",
+        ):
             unsigned_long(str(2**32))
 
     def test_minus_zero_is_zero(self):
@@ -213,7 +226,8 @@ class TestTextOutput:
         assert len(lines) == 14
 
     @pytest.mark.parametrize(
-        ("precision", "expected"), [(0, "flow_rate=5.0"), (2, "flow_rate=4.96"), (4, "flow_rate=4.9571")]
+        ("precision", "expected"),
+        [(0, "flow_rate=5.0"), (2, "flow_rate=4.96"), (4, "flow_rate=4.9571")],
     )
     def test_get_telemetry_precision(self, run, simulated, precision, expected):
         _, out, _ = run("-p", str(precision), "get_telemetry")
@@ -262,7 +276,10 @@ class TestJsonOutput:
             ("get_protocol_version", {"protocol_version": 1}),
             ("get_software_version", {"software_version": "v2.0.0"}),
             ("get_serial_number", {"serial_number": "2511000618"}),
-            ("get_cpu_serial_number", {"cpu_serial_number": "5767072d39314637424e79137d2e5454"}),
+            (
+                "get_cpu_serial_number",
+                {"cpu_serial_number": "5767072d39314637424e79137d2e5454"},
+            ),
             ("get_time", {"time": "2026-10-27T19:27:46"}),
             ("get_setpoint", {"setpoint": 150}),
             ("get_uptime", {"uptime": 103627}),
@@ -380,6 +397,7 @@ class TestErrors:
         code, _, err = run("echo")
         assert code == 9
         assert err == "No result received\n"
+
 
 class TestInternalError:
     def test_unexpected_command_in_response(self, run, device):

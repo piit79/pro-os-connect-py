@@ -1,6 +1,5 @@
 import logging
 import struct
-from abc import ABC
 from typing import Any
 
 from .codecs import Codec
@@ -8,7 +7,9 @@ from .common import FRAMING_PHRASE, Command, Node, StatusCode
 from .util import calculate_crc
 
 
-class Request(ABC):
+class Request:
+    """Base class for requests. Subclasses must set COMMAND."""
+
     COMMAND = Command.NONE
     CODEC: Codec | None = None
 
@@ -19,6 +20,8 @@ class Request(ABC):
         :param to_addr: Destination address - Node.PRO_OS or Node.NETWORK_CARD
         :type to_addr: Node
         """
+        if self.COMMAND is Command.NONE:
+            raise TypeError(f"{type(self).__name__} must define COMMAND")
         self.data = data
         self.from_addr = Node.CLIENT
         self.to_addr = to_addr
@@ -50,9 +53,7 @@ class Request(ABC):
     def get_transport_packet(self, protocol_packet: bytes) -> bytes:
         """Create and return the transport packet from the protocol packet"""
         payload_crc = calculate_crc(protocol_packet)
-        header_base = struct.pack(
-            "<III", FRAMING_PHRASE, len(protocol_packet), payload_crc
-        )
+        header_base = struct.pack("<III", FRAMING_PHRASE, len(protocol_packet), payload_crc)
         header_crc = calculate_crc(header_base)
         header = header_base + struct.pack("<I", header_crc)
         return header + protocol_packet

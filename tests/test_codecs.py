@@ -41,11 +41,8 @@ def test_struct_factory_keeps_format():
 
 
 def test_base_codec_is_abstract():
-    codec = Codec()
-    with pytest.raises(NotImplementedError):
-        codec.pack(b"")
-    with pytest.raises(NotImplementedError):
-        codec.unpack(b"")
+    with pytest.raises(TypeError, match="Can't instantiate abstract class"):
+        Codec()  # pyright: ignore[reportAbstractUsage] - intentional for the test
 
 
 class TestCodecNull:

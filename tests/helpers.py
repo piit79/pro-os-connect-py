@@ -14,18 +14,12 @@ CAPTURED = {
         "00004ba09e401d859d411a168c41238993410000000000000000"
     ),
     Command.GET_TIME: (
-        "fab0fab020000000992d03a7a4733d9b060001000000000001000300323032362d31302d3237"
-        "5431393a32373a343600"
+        "fab0fab020000000992d03a7a4733d9b060001000000000001000300323032362d31302d32375431393a32373a343600"
     ),
-    Command.GET_SOFTWARE_VERSION: (
-        "fab0fab01300000072bb2d8b79a5eb9611000100000000000100030076322e302e3000"
-    ),
-    Command.GET_SERIAL_NUMBER: (
-        "fab0fab01700000043fb9fb2fe6d61af1200010000000000010003003235313130303036313800"
-    ),
+    Command.GET_SOFTWARE_VERSION: ("fab0fab01300000072bb2d8b79a5eb9611000100000000000100030076322e302e3000"),
+    Command.GET_SERIAL_NUMBER: ("fab0fab01700000043fb9fb2fe6d61af1200010000000000010003003235313130303036313800"),
     Command.GET_CPU_SERIAL_NUMBER: (
-        "fab0fab01c0000006b6334ce119021f41300010000000000010003005767072d39314637424e"
-        "79137d2e5454"
+        "fab0fab01c0000006b6334ce119021f41300010000000000010003005767072d39314637424e79137d2e5454"
     ),
     Command.GET_NETWORK_CONFIGURATION: (
         "fab0fab03e0000007c907142869074c31400010000000000010003007b0a20202020226d616e"
@@ -55,9 +49,7 @@ def build_packet(
     status = status.value if isinstance(status, StatusCode) else status
     from_addr = from_addr.value if isinstance(from_addr, Node) else from_addr
     to_addr = to_addr.value if isinstance(to_addr, Node) else to_addr
-    protocol_packet = (
-        struct.pack("<IIHH", command, status, from_addr, to_addr) + payload
-    )
+    protocol_packet = struct.pack("<IIHH", command, status, from_addr, to_addr) + payload
     if payload_length is None:
         payload_length = len(protocol_packet)
     if payload_crc is None:
@@ -175,8 +167,20 @@ class SimulatedDevice:
     def telemetry(self) -> bytes:
         return struct.pack(
             TELEMETRY_FORMAT,
-            10362745, 0, self.setpoint, 4.95712, 19.69, 17.51076, 18.44193,
-            300 if self.running else 0, 1, 2, 3, 4, 5, int(self.running),
+            10362745,
+            0,
+            self.setpoint,
+            4.95712,
+            19.69,
+            17.51076,
+            18.44193,
+            300 if self.running else 0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            int(self.running),
         )
 
     def __call__(self, request: bytes) -> list[bytes]:

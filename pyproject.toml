@@ -31,6 +31,7 @@ package = true
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
+    "ruff>=0.17.4",
 ]
 
 [tool.pytest.ini_options]
@@ -38,3 +39,18 @@ testpaths = ["tests"]
 addopts = ["--strict-markers", "--strict-config", "-ra"]
 xfail_strict = true
 filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+# Line length is handled by the formatter, which leaves long strings and comments alone
+ignore = ["E501"]

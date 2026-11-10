@@ -24,9 +24,7 @@ ALL_REQUESTS = [
     (req.GetNetworkConfigurationRequest, Command.GET_NETWORK_CONFIGURATION),
     (req.SetSetpointRequest, Command.SET_SETPOINT),
 ]
-NO_PAYLOAD_REQUESTS = [
-    cls for cls, _ in ALL_REQUESTS if cls.CODEC is None
-]
+NO_PAYLOAD_REQUESTS = [cls for cls, _ in ALL_REQUESTS if cls.CODEC is None]
 
 
 @pytest.mark.parametrize(("cls", "command"), ALL_REQUESTS, ids=lambda x: getattr(x, "__name__", ""))
@@ -67,14 +65,15 @@ def test_packet_layout_byte_for_byte():
 
 def test_get_protocol_packet():
     request = req.PumpStartRequest()
-    assert request.get_protocol_packet(b"xy") == struct.pack(
-        "<IIHH", Command.PUMP_START.value, StatusCode.NOT_PROCESSED.value, 3, 1
-    ) + b"xy"
+    assert (
+        request.get_protocol_packet(b"xy")
+        == struct.pack("<IIHH", Command.PUMP_START.value, StatusCode.NOT_PROCESSED.value, 3, 1) + b"xy"
+    )
 
 
 def test_get_transport_packet():
     protocol_packet = b"\x01" * 13
-    packet = req.Request().get_transport_packet(protocol_packet)
+    packet = req.GetProtocolVersionRequest().get_transport_packet(protocol_packet)
     framing, length, payload_crc, header_crc = struct.unpack("<IIII", packet[:16])
     assert framing == FRAMING_PHRASE
     assert length == 13
@@ -83,9 +82,7 @@ def test_get_transport_packet():
     assert packet[16:] == protocol_packet
 
 
-@pytest.mark.parametrize(
-    "payload", [b"", b"A", b"AB", b"ABC", b"ABCD", b"ABCDE", b"Test Echo Payload"]
-)
+@pytest.mark.parametrize("payload", [b"", b"A", b"AB", b"ABC", b"ABCD", b"ABCDE", b"Test Echo Payload"])
 def test_echo_payload_with_any_alignment(payload):
     request = req.EchoRequest(payload)
     assert request.get_payload() == payload
@@ -113,9 +110,9 @@ def test_set_setpoint_negative_raises():
         req.SetSetpointRequest(-1).get_packet()
 
 
-def test_base_request_without_command_cannot_be_packed():
-    with pytest.raises(struct.error):
-        req.Request().get_packet()
+def test_base_request_cannot_be_instantiated():
+    with pytest.raises(TypeError, match="Request must define COMMAND"):
+        req.Request()
 
 
 def test_get_payload_without_codec_ignores_data():

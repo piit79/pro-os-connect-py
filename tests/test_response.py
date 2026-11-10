@@ -243,9 +243,18 @@ class TestResponse:
         assert cls.COMMAND is command
         assert resp._registry[command] is cls
 
+    def test_base_response_class_cannot_be_instantiated(self):
+        with pytest.raises(TypeError, match="Response must define COMMAND"):
+            Response(ResponsePacket(build_packet(Command.GET_SOFTWARE_VERSION)))
+
     @pytest.mark.parametrize(
         "command",
-        [Command.SOFTWARE_UPDATE_START, Command.SOFTWARE_UPDATE_FINISH, Command.FILE_GET_PAGE, Command.SET_CLIENT_TIMEOUT],
+        [
+            Command.SOFTWARE_UPDATE_START,
+            Command.SOFTWARE_UPDATE_FINISH,
+            Command.FILE_GET_PAGE,
+            Command.SET_CLIENT_TIMEOUT,
+        ],
         ids=lambda c: c.name,
     )
     def test_unregistered_command(self, command):
@@ -257,7 +266,11 @@ class TestResponse:
 
     def test_attributes_copied_from_packet(self):
         packet = ResponsePacket(
-            build_packet(Command.PUMP_STOP, status=StatusCode.WRITE_PROTECTED, from_addr=Node.NETWORK_CARD)
+            build_packet(
+                Command.PUMP_STOP,
+                status=StatusCode.WRITE_PROTECTED,
+                from_addr=Node.NETWORK_CARD,
+            )
         )
         packet.parse()
         response = packet.get_response()
@@ -267,7 +280,14 @@ class TestResponse:
         assert response.to_addr is Node.CLIENT
 
     @pytest.mark.parametrize(
-        "command", [Command.REBOOT, Command.SET_TIME, Command.PUMP_START, Command.PUMP_STOP, Command.SET_SETPOINT]
+        "command",
+        [
+            Command.REBOOT,
+            Command.SET_TIME,
+            Command.PUMP_START,
+            Command.PUMP_STOP,
+            Command.SET_SETPOINT,
+        ],
     )
     def test_responses_without_codec_have_no_result(self, command):
         packet = ResponsePacket(build_packet(command, b"ignored"))
@@ -289,10 +309,26 @@ class TestResponse:
     @pytest.mark.parametrize(
         ("command", "payload", "expected"),
         [
-            (Command.GET_PROTOCOL_VERSION, b"\x01", r"Error decoding response: unpack requires a buffer of 4 bytes"),
-            (Command.GET_SOFTWARE_VERSION, b"\xff\x00", r"Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"),
-            (Command.GET_NETWORK_CONFIGURATION, b"{oops\x00", r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)"),
-            (Command.GET_TIME, b"yesterday\x00", r"Error decoding response: Invalid isoformat string: 'yesterday'"),
+            (
+                Command.GET_PROTOCOL_VERSION,
+                b"\x01",
+                r"Error decoding response: unpack requires a buffer of 4 bytes",
+            ),
+            (
+                Command.GET_SOFTWARE_VERSION,
+                b"\xff\x00",
+                r"Error decoding response: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            ),
+            (
+                Command.GET_NETWORK_CONFIGURATION,
+                b"{oops\x00",
+                r"Error decoding response: Expecting property name enclosed in double quotes: line 1 column 2 \(char 1\)",
+            ),
+            (
+                Command.GET_TIME,
+                b"yesterday\x00",
+                r"Error decoding response: Invalid isoformat string: 'yesterday'",
+            ),
         ],
     )
     def test_codec_error_response_decode_error(self, command, payload, expected):
