@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict
 from datetime import datetime
 from time import sleep, time
@@ -38,31 +38,42 @@ def unsigned_long(value: str) -> int:
     return ivalue
 
 
+class CliCommand:
+    def __init__(self, command: str, help: str = "", args: Iterable | None = None):
+        self.command = command
+        self.help = help
+        self.args = args if args else []
+
+
 COMMANDS = {
-    "get_protocol_version": [],
-    "echo": [(("--payload", "-p"), {"type": str, "help": "Test payload for echo command"})],
-    "reboot": [],
-    "get_telemetry": [],
-    "get_setpoint": [],
-    "get_uptime": [],
-    "is_running": [],
-    "get_time": [],
-    "set_time": [],
-    "pump_start": [],
-    "pump_stop": [],
-    "get_software_version": [],
-    "get_serial_number": [],
-    "get_cpu_serial_number": [],
-    "get_network_configuration": [],
-    "set_setpoint": [
-        (
-            ("setpoint",),
-            {
-                "type": unsigned_long,
-                "help": f"Setpoint value to set (0-{UNSIGNED_LONG_MAX})",
-            },
-        )
-    ],
+    CliCommand("get_protocol_version", help="Get Pro OS Connect protocol version"),
+    CliCommand(
+        "echo",
+        help="Send an echo request",
+        args=[
+            (("--payload", "-p"), {"type": str, "help": "Test payload for echo command"}),
+        ],
+    ),
+    CliCommand("reboot", help="Reboot the device"),
+    CliCommand("get_telemetry", help="Get device telemetry"),
+    CliCommand("get_setpoint", help="Get current target air flow"),
+    CliCommand("get_uptime", help="Get device uptime in seconds"),
+    CliCommand("is_running", help="Returns 1 if the pump is running, 0 otherwise"),
+    CliCommand("get_time", help="Returns the device time"),
+    CliCommand("set_time", help="Sets the device time to current time"),
+    CliCommand("pump_start", help="Start the pump"),
+    CliCommand("pump_stop", help="Stop the pump"),
+    CliCommand("get_software_version", help="Get the device software version"),
+    CliCommand("get_serial_number", help="Get the device serial number"),
+    CliCommand("get_cpu_serial_number", help="Get the main CPU serial number"),
+    CliCommand("get_network_configuration", help="Retrieve the device network configuration"),
+    CliCommand(
+        "set_setpoint",
+        help="Set the target air flow",
+        args=[
+            (("setpoint",), {"type": unsigned_long, "help": f"Air flow value to set (0-{UNSIGNED_LONG_MAX})"}),
+        ],
+    ),
 }
 
 
@@ -124,9 +135,9 @@ class ProOSConnectCli:
         )
         subparsers = parser.add_subparsers(required=True, help="Command to execute", dest="command")
 
-        for cmd_name, cmd_args in COMMANDS.items():
-            cmd_parser = subparsers.add_parser(cmd_name, help=f"{cmd_name} help")
-            for args, kwargs in cmd_args:
+        for cmd in COMMANDS:
+            cmd_parser = subparsers.add_parser(cmd.command, help=cmd.help)
+            for args, kwargs in cmd.args:
                 cmd_parser.add_argument(*args, **kwargs)
 
         return parser.parse_args()

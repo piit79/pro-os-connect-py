@@ -9,6 +9,7 @@ import pytest
 from pro_os_connect import ProOSConnect, cli
 from pro_os_connect.cli import (
     COMMANDS,
+    CliCommand,
     ProOSConnectCli,
     main,
     output_json,
@@ -151,9 +152,9 @@ class TestArguments:
         code, _, _ = run("-l", "TRACE", "get_time")
         assert code == 2
 
-    @pytest.mark.parametrize("command", list(COMMANDS))
-    def test_every_command_exists(self, command):
-        assert hasattr(ProOSConnectCli, command) or hasattr(ProOSConnect, command)
+    @pytest.mark.parametrize("cmd", list(COMMANDS))
+    def test_every_command_exists(self, cmd):
+        assert hasattr(ProOSConnectCli, cmd.command) or hasattr(ProOSConnect, cmd.command)
 
     def test_defaults(self, run, simulated, monkeypatch):
         seen = {}
@@ -397,6 +398,14 @@ class TestErrors:
         code, _, err = run("echo")
         assert code == 9
         assert err == "No result received\n"
+
+    def test_invalid_command(self, run, device, monkeypatch):
+        monkeypatch.setattr(cli, "COMMANDS", [*COMMANDS, CliCommand("get_foobar")])
+        code, _, err = run("get_foobar")
+        assert code == 9
+        assert err == "Invalid command: get_foobar\n"
+        assert device.requests == []  # nothing was sent
+        assert device.connections == 0  # no connection was even opened
 
 
 class TestInternalError:
