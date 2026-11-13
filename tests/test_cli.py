@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from pro_os_connect import ProOSConnect, cli
+from pro_os_connect import ProOSConnect, ProOSConnectError, cli
 from pro_os_connect.cli import (
     COMMANDS,
     CliCommand,
@@ -379,6 +379,17 @@ class TestErrors:
         code, _, err = run("set_setpoint", "100")
         assert code == 6
         assert "WRITE_PROTECTED" in err
+
+    def test_generic_exception_exits_8(self, run, simulated, monkeypatch):
+        msg = "fake echo error"
+
+        def echo_mock(s, payload=None):
+            raise ProOSConnectError(msg)
+
+        monkeypatch.setattr(ProOSConnect, "echo", echo_mock)
+        code, _, err = run("echo")
+        assert code == 8
+        assert err == f"Client error: {msg}\n"
 
     def test_set_setpoint_cannot_read_back(self, run, simulated, monkeypatch):
         monkeypatch.setattr(cli, "sleep", lambda seconds: None)
