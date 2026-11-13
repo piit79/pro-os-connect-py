@@ -11,7 +11,7 @@ class Request:
     """Base class for requests. Subclasses must set COMMAND."""
 
     COMMAND = Command.NONE
-    CODEC: Codec | None = None
+    CODEC: Codec[Any] = Codec.empty()
 
     def __init__(self, data: Any = None, to_addr: Node = Node.PRO_OS):
         """
@@ -60,9 +60,7 @@ class Request:
 
     def get_payload(self) -> bytes:
         """Return the encoded command data"""
-        if self.CODEC is not None:
-            return self.CODEC.pack(self.data)
-        return b""
+        return self.CODEC.pack(self.data)
 
     def get_packet(self) -> bytes:
         """Create and return the network packet data"""
@@ -78,7 +76,7 @@ class GetProtocolVersionRequest(Request):
 
 class EchoRequest(Request):
     COMMAND = Command.ECHO
-    CODEC = Codec.null()
+    CODEC = Codec.raw()
 
 
 class RebootRequest(Request):

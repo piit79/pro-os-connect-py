@@ -101,7 +101,7 @@ that perform an action return `{"success": true}`. Errors are written as
 | 6 | Response error: the response was invalid, could not be decoded, or reported an error status |
 | 7 | Internal error: the device responded with an unsupported command |
 | 8 | Other client error |
-| 9 | Command failed: no result, incorrect echo response, or the setpoint could not be set or read back |
+| 9 | Command failed: invalid command, incorrect echo response |
 
 ## Library
 
@@ -145,8 +145,7 @@ fails, the connection is closed and the next request opens a new one.
 | `reboot()` | `bool` |
 | `connect(force=False)`, `disconnect()` | Manage the connection explicitly |
 
-Errors are raised as exceptions (see below). Most getters return `None` if the device
-answers with an unexpected result type.
+Errors are raised as exceptions (see below).
 
 `TelemetryFields` is a dataclass with these fields:
 

@@ -134,7 +134,12 @@ class ProOSConnect:
             self.logger.debug("Response status: %s", response_packet.status.name)
             raise ProOSConnectResponseError(f"Error in response: {response_packet.status.name}")
 
-        return response_packet.get_response()
+        response = response_packet.get_response()
+        if response.COMMAND != request.COMMAND:
+            raise ProOSConnectResponseError(
+                f"Response command {response.COMMAND.name} does not match request {request.COMMAND.name}"
+            )
+        return response
 
     def _get_response_packet(self) -> ResponsePacket:
         assert self.socket is not None  # to prevent type checker errors below
@@ -155,9 +160,9 @@ class ProOSConnect:
 
         return resp_packet
 
-    def get_protocol_version(self) -> int | None:
+    def get_protocol_version(self) -> int:
         response = self.send_request(GetProtocolVersionRequest())
-        return response.result if isinstance(response.result, int) else None
+        return response.result
 
     def echo(self, test_payload: bytes | None = None) -> bool:
         if test_payload is None:
@@ -169,24 +174,24 @@ class ProOSConnect:
         self.send_request(RebootRequest())
         return True
 
-    def get_telemetry(self) -> TelemetryFields | None:
+    def get_telemetry(self) -> TelemetryFields:
         response = self.send_request(GetTelemetryRequest())
-        return response.result if isinstance(response.result, TelemetryFields) else None
+        return response.result
 
-    def get_uptime(self) -> int | None:
+    def get_uptime(self) -> int:
         """Return device uptime in seconds."""
         fields = self.get_telemetry()
-        return int(fields.timestamp / 100.0) if fields else None
+        return int(fields.timestamp / 100.0)
 
-    def is_running(self) -> bool | None:
+    def is_running(self) -> bool:
         """Return True if the pump is running"""
         fields = self.get_telemetry()
-        return bool(fields.is_running) if fields else None
+        return bool(fields.is_running)
 
-    def get_time(self) -> datetime | None:
+    def get_time(self) -> datetime:
         """Return device time as datetime object"""
         response = self.send_request(GetTimeRequest())
-        return response.result if isinstance(response.result, datetime) else None
+        return response.result
 
     def set_time(self, date_obj: datetime) -> bool:
         self.send_request(SetTimeRequest(date_obj))
@@ -200,21 +205,21 @@ class ProOSConnect:
         self.send_request(PumpStopRequest())
         return True
 
-    def get_software_version(self) -> str | None:
+    def get_software_version(self) -> str:
         response = self.send_request(GetSoftwareVersionRequest())
-        return response.result if isinstance(response.result, str) else None
+        return response.result
 
-    def get_serial_number(self) -> str | None:
+    def get_serial_number(self) -> str:
         response = self.send_request(GetSerialNumberRequest())
-        return response.result if isinstance(response.result, str) else None
+        return response.result
 
-    def get_cpu_serial_number(self) -> str | None:
+    def get_cpu_serial_number(self) -> str:
         response = self.send_request(GetCpuSerialNumberRequest())
-        return response.result if isinstance(response.result, str) else None
+        return response.result
 
-    def get_network_configuration(self) -> Mapping | None:
+    def get_network_configuration(self) -> Mapping:
         response = self.send_request(GetNetworkConfigurationRequest())
-        return response.result if isinstance(response.result, Mapping) else None
+        return response.result
 
     def set_setpoint(self, setpoint: int) -> bool:
         self.send_request(SetSetpointRequest(setpoint))

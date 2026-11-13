@@ -1,18 +1,25 @@
 import json
 import struct
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
+from typing import Generic, TypeVar
 
 from .common import TelemetryFields
 
+T = TypeVar("T")
 
-class Codec(ABC):
+
+class Codec(ABC, Generic[T]):
     """Base class for the payload encoder/decoder classes"""
 
     @classmethod
-    def null(cls):
-        return CodecNull()
+    def empty(cls):
+        return CodecEmpty()
+
+    @classmethod
+    def raw(cls):
+        return CodecRaw()
 
     @classmethod
     def cstr(cls):
@@ -43,15 +50,25 @@ class Codec(ABC):
         return CodecCstrJson()
 
     @abstractmethod
-    def pack(self, data) -> bytes:
+    def pack(self, data: T) -> bytes:
         """Encode a value to bytes"""
 
     @abstractmethod
-    def unpack(self, payload: bytes) -> Any:
+    def unpack(self, payload: bytes) -> T:
         """Decode bytes to a value"""
 
 
-class CodecNull(Codec):
+class CodecEmpty(Codec[None]):
+    """Encoder/decoder class for no payload"""
+
+    def pack(self, data: None) -> bytes:
+        return b""
+
+    def unpack(self, payload: bytes) -> None:
+        return None
+
+
+class CodecRaw(Codec[bytes]):
     """Encoder/decoder class for a raw unformatted payload"""
 
     def pack(self, data: bytes) -> bytes:
@@ -61,7 +78,7 @@ class CodecNull(Codec):
         return payload
 
 
-class CodecCstr(Codec):
+class CodecCstr(Codec[str]):
     """Encoder/decoder class for a null-terminated string payload"""
 
     def pack(self, data: str) -> bytes:
@@ -71,10 +88,10 @@ class CodecCstr(Codec):
         return payload.decode("utf-8").rstrip("\x00")
 
 
-class CodecStruct(Codec):
+class CodecStruct(Codec[tuple]):
     """Encoder/decoder class for a struct payload"""
 
-    def __init__(self, format) -> None:
+    def __init__(self, format: str) -> None:
         self.format = format
 
     def pack(self, data: tuple) -> bytes:
@@ -84,49 +101,52 @@ class CodecStruct(Codec):
         return struct.unpack(self.format, payload)
 
 
-class CodecTelemetryFields(CodecStruct):
+class CodecTelemetryFields(Codec[TelemetryFields]):
     """Encoder/decoder class for a telemetry field struct payload"""
 
     def __init__(self) -> None:
-        self.format = "<IIIffffHBBBBBb"
+        self._struct = CodecStruct("<IIIffffHBBBBBb")
 
-    def pack(self, data: tuple) -> bytes:
+    def pack(self, data: TelemetryFields) -> bytes:
         """Pack not implemented, this is only a decoder"""
         raise NotImplementedError()
 
-    def unpack(self, payload: bytes) -> TelemetryFields:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return TelemetryFields.from_iterable(super().unpack(payload))
+    def unpack(self, payload: bytes) -> TelemetryFields:
+        return TelemetryFields.from_iterable(self._struct.unpack(payload))
 
 
-class CodecInt(CodecStruct):
+class CodecInt(Codec[int]):
     """Encoder/decoder class for a struct payload"""
 
-    def pack(self, data: int) -> bytes:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return super().pack((data,))
+    def __init__(self, format: str) -> None:
+        self._struct = CodecStruct(format)
 
-    def unpack(self, payload: bytes) -> int:  # pyright: ignore[reportIncompatibleMethodOverride]
-        (val,) = super().unpack(payload)
+    def pack(self, data: int) -> bytes:
+        return self._struct.pack((data,))
+
+    def unpack(self, payload: bytes) -> int:
+        (val,) = self._struct.unpack(payload)
         return val
 
 
-class CodecIsoDateTime(CodecCstr):
+class CodecIsoDateTime(Codec[datetime]):
     """Encoder/decoder class for an ISO datetime payload in a null-terminated string"""
 
     def __init__(self, precision: int = 0) -> None:
         self.precision = precision
-        super().__init__()
+        self._cstr = CodecCstr()
 
-    def pack(self, data: datetime) -> bytes:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def pack(self, data: datetime) -> bytes:
         length = 19 + (1 if self.precision > 0 else 0) + self.precision
         datetime_str = data.isoformat()[:length]
-        return super().pack(datetime_str)
+        return self._cstr.pack(datetime_str)
 
-    def unpack(self, payload: bytes) -> datetime:  # pyright: ignore[reportIncompatibleMethodOverride]
-        datetime_str = super().unpack(payload)
+    def unpack(self, payload: bytes) -> datetime:
+        datetime_str = self._cstr.unpack(payload)
         return datetime.fromisoformat(datetime_str)
 
 
-class CodecRawHex(Codec):
+class CodecRawHex(Codec[str]):
     """Encoder/decoder class for raw data represented as hex string"""
 
     def pack(self, data: str) -> bytes:
@@ -136,13 +156,18 @@ class CodecRawHex(Codec):
         return payload.hex()
 
 
-class CodecCstrJson(CodecCstr):
+class CodecCstrJson(Codec[Mapping]):
     """Encoder/decoder class for a JSON payload in a null-terminated string"""
 
-    def pack(self, data: dict) -> bytes:  # pyright: ignore[reportIncompatibleMethodOverride]
-        json_str = json.dumps(data, indent=2)
-        return super().pack(json_str)
+    def __init__(self) -> None:
+        self._cstr = CodecCstr()
 
-    def unpack(self, payload: bytes) -> dict:  # pyright: ignore[reportIncompatibleMethodOverride]
-        json_str = super().unpack(payload)
-        return json.loads(json_str)
+    def pack(self, data: Mapping) -> bytes:
+        json_str = json.dumps(data, indent=2)
+        return self._cstr.pack(json_str)
+
+    def unpack(self, payload: bytes) -> Mapping:
+        data = json.loads(self._cstr.unpack(payload))
+        if not isinstance(data, dict):
+            raise ValueError(f"Expected a JSON object, got {type(data).__name__}")
+        return data

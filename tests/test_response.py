@@ -14,6 +14,7 @@ from pro_os_connect.response import (
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
     ResponseInternalError,
+    ResponseNotDefinedError,
     ResponsePacket,
     ResponsePacketIncompleteError,
     ResponsePayloadCrcError,
@@ -23,7 +24,7 @@ from pro_os_connect.response import (
 from .helpers import CAPTURED, build_packet, captured
 
 ERRORS = [
-    resp.ResponseNotDefinedError,
+    ResponseNotDefinedError,
     ResponsePacketIncompleteError,
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
@@ -31,6 +32,28 @@ ERRORS = [
     ResponsePayloadCrcError,
     ResponseCommandNotImplementedError,
 ]
+
+
+@pytest.mark.parametrize("cls", resp.Response.__subclasses__(), ids=lambda c: c.__name__)
+def test_all_subclasses_define_command_and_codec(cls):
+    assert cls.COMMAND is not Command.NONE, f"Class {cls.__name__} doesn't define COMMAND"
+    assert hasattr(cls, "CODEC"), f"Class {cls.__name__} doesn't set CODEC"
+
+
+def test_subclass_without_command():
+    class NoCommandResponse(Response):
+        pass
+
+    with pytest.raises(TypeError, match="NoCommandResponse must define COMMAND"):
+        NoCommandResponse(ResponsePacket())
+
+
+def test_subclass_without_codec():
+    class NoCodecResponse(Response):
+        COMMAND = Command.FILE_GET_START
+
+    with pytest.raises(TypeError, match="NoCodecResponse must define CODEC"):
+        NoCodecResponse(ResponsePacket())
 
 
 @pytest.mark.parametrize("error", ERRORS, ids=lambda e: e.__name__)

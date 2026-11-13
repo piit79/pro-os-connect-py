@@ -181,12 +181,10 @@ class ProOSConnectCli:
 
     def get_telemetry(self):
         fields = self.poc.get_telemetry()
-        res = fields
-        if fields:
-            res = asdict(fields)
-            for f, v in res.items():
-                if isinstance(v, float):
-                    res[f] = round(v, self.args.precision)
+        res = asdict(fields)
+        for f, v in res.items():
+            if isinstance(v, float):
+                res[f] = round(v, self.args.precision)
         return res
 
     def set_time(self):
@@ -196,16 +194,14 @@ class ProOSConnectCli:
     def get_network_configuration(self):
         return self.poc.get_network_configuration()
 
-    def get_setpoint(self) -> int | None:
+    def get_setpoint(self) -> int:
         fields = self.poc.get_telemetry()
-        return fields.setpoint if fields else None
+        return fields.setpoint
 
     def set_setpoint(self):
         self.poc.set_setpoint(self.args.setpoint)
         sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
         setpoint = self.get_setpoint()
-        if setpoint is None:
-            raise CliError("Error getting new setpoint")
         self.output(
             f"Setpoint set to {setpoint}",
             {"success": True, "setpoint": setpoint},
@@ -226,8 +222,6 @@ class ProOSConnectCli:
 
         try:
             result = method()
-            if result is None:
-                raise CliError("No result received")
         except ProOSConnectRequestError as e:
             self.error(f"Error sending request: {e}")
             exit_code = 5

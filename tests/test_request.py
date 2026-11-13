@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 
 from pro_os_connect import request as req
+from pro_os_connect.codecs import CodecEmpty
 from pro_os_connect.common import FRAMING_PHRASE, Command, Node, StatusCode
 from pro_os_connect.util import calculate_crc
 
@@ -24,7 +25,11 @@ ALL_REQUESTS = [
     (req.GetNetworkConfigurationRequest, Command.GET_NETWORK_CONFIGURATION),
     (req.SetSetpointRequest, Command.SET_SETPOINT),
 ]
-NO_PAYLOAD_REQUESTS = [cls for cls, _ in ALL_REQUESTS if cls.CODEC is None]
+NO_PAYLOAD_REQUESTS = [cls for cls, _ in ALL_REQUESTS if isinstance(cls.CODEC, CodecEmpty)]
+
+
+def test_includes_all_requests():
+    assert set(req.Request.__subclasses__()) == {cls for cls, _ in ALL_REQUESTS}
 
 
 @pytest.mark.parametrize(("cls", "command"), ALL_REQUESTS, ids=lambda x: getattr(x, "__name__", ""))

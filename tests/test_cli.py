@@ -369,13 +369,6 @@ class TestErrors:
         assert code == 6
         assert "Response error: Response payload CRC error" in err
 
-    def test_no_result_exits_9(self, run, device):
-        # A response to a different command leaves the getter without a result
-        device.respond(build_packet(Command.GET_SERIAL_NUMBER, b"123\x00"))
-        code, _, err = run("get_telemetry")
-        assert code == 9
-        assert err == "No result received\n"
-
     def test_errors_as_json(self, run, simulated):
         simulated.status = StatusCode.INVALID_COMMAND
         code, out, err = run("--json", "get_time")
@@ -402,13 +395,6 @@ class TestErrors:
         code, _, err = run("echo")
         assert code == 8
         assert err == f"Client error: {msg}\n"
-
-    def test_set_setpoint_cannot_read_back(self, run, simulated, monkeypatch):
-        monkeypatch.setattr(cli, "sleep", lambda seconds: None)
-        monkeypatch.setattr(ProOSConnect, "get_telemetry", lambda self: None)
-        code, _, err = run("set_setpoint", "100")
-        assert code == 9
-        assert err == "Error getting new setpoint\n"
 
     def test_invalid_command(self, run, device, monkeypatch):
         monkeypatch.setattr(cli, "COMMANDS", [*COMMANDS, CliCommand("get_foobar")])

@@ -1,16 +1,21 @@
 import logging
 import struct
+from collections.abc import Mapping
+from datetime import datetime
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from .codecs import Codec
-from .common import FRAMING_PHRASE, Command, Node, StatusCode
+from .common import FRAMING_PHRASE, Command, Node, StatusCode, TelemetryFields
 from .util import calculate_crc
+
+T = TypeVar("T")
+R = TypeVar("R", bound="Response[Any]")
 
 _registry: dict[Command, type["Response"]] = {}
 
 
-def response(cls: type["Response"]) -> type["Response"]:
+def response(cls: type[R]) -> type[R]:
     _registry[cls.COMMAND] = cls
     return cls
 
@@ -146,11 +151,12 @@ class ResponsePacket:
             raise ResponseDecodeError(f"Error decoding response: {e}") from e
 
 
-class Response:
+class Response(Generic[T]):
     """Base class for responses. Subclasses must set COMMAND."""
 
     COMMAND = Command.NONE
-    CODEC: Codec | None = None
+    CODEC: Codec[T]
+    result: T
 
     def __init__(self, packet: ResponsePacket):
         """
@@ -159,16 +165,16 @@ class Response:
         """
         if self.COMMAND is Command.NONE:
             raise TypeError(f"{type(self).__name__} must define COMMAND")
+        if not hasattr(self, "CODEC"):
+            raise TypeError(f"{type(self).__name__} must define CODEC")
         self.packet = packet
         self.status: StatusCode = self.packet.status
         self.from_addr = self.packet.from_addr
         self.to_addr = self.packet.to_addr
-        self.result: Any = None
         self.unpack()
 
     def unpack(self):
-        if self.CODEC is not None:
-            self.result = self.CODEC.unpack(self.packet.payload)
+        self.result = self.CODEC.unpack(self.packet.payload)
 
     @classmethod
     def from_packet(cls, packet: ResponsePacket) -> "Response":
@@ -183,20 +189,21 @@ class Response:
 
 
 @response
-class GetProtocolVersionResponse(Response):
+class GetProtocolVersionResponse(Response[int]):
     COMMAND = Command.GET_PROTOCOL_VERSION
     CODEC = Codec.int("<I")
 
 
 @response
-class EchoResponse(Response):
+class EchoResponse(Response[bytes]):
     COMMAND = Command.ECHO
-    CODEC = Codec.null()
+    CODEC = Codec.raw()
 
 
 @response
-class RebootResponse(Response):
+class RebootResponse(Response[None]):
     COMMAND = Command.REBOOT
+    CODEC = Codec.empty()
 
 
 #                           Response payload
@@ -213,56 +220,60 @@ class RebootResponse(Response):
 #       | RIB  | CCB  | CPB  | Run  |
 #       +------+------+------+------+
 @response
-class GetTelemetryResponse(Response):
+class GetTelemetryResponse(Response[TelemetryFields]):
     COMMAND = Command.GET_TELEMETRY
     CODEC = Codec.telemetry_fields()
 
 
 @response
-class GetTimeResponse(Response):
+class GetTimeResponse(Response[datetime]):
     COMMAND = Command.GET_TIME
     CODEC = Codec.iso_datetime()
 
 
 @response
-class SetTimeResponse(Response):
+class SetTimeResponse(Response[None]):
     COMMAND = Command.SET_TIME
+    CODEC = Codec.empty()
 
 
 @response
-class PumpStartResponse(Response):
+class PumpStartResponse(Response[None]):
     COMMAND = Command.PUMP_START
+    CODEC = Codec.empty()
 
 
 @response
-class PumpStopResponse(Response):
+class PumpStopResponse(Response[None]):
     COMMAND = Command.PUMP_STOP
+    CODEC = Codec.empty()
 
 
 @response
-class GetSoftwareVersionResponse(Response):
+class GetSoftwareVersionResponse(Response[str]):
     COMMAND = Command.GET_SOFTWARE_VERSION
     CODEC = Codec.cstr()
 
 
 @response
-class GetSerialNumberResponse(Response):
+class GetSerialNumberResponse(Response[str]):
     COMMAND = Command.GET_SERIAL_NUMBER
     CODEC = Codec.cstr()
 
 
 @response
-class GetCpuSerialNumberResponse(Response):
+class GetCpuSerialNumberResponse(Response[str]):
     COMMAND = Command.GET_CPU_SERIAL_NUMBER
     CODEC = Codec.raw_hex()
 
 
 @response
-class GetNetworkConfigurationResponse(Response):
+class GetNetworkConfigurationResponse(Response[Mapping]):
     COMMAND = Command.GET_NETWORK_CONFIGURATION
     CODEC = Codec.json_cstr()
 
 
 @response
-class SetSetpointResponse(Response):
+class SetSetpointResponse(Response[None]):
     COMMAND = Command.SET_SETPOINT
+    CODEC = Codec.empty()

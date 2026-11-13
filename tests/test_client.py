@@ -14,9 +14,14 @@ from pro_os_connect import (
     ProOSConnectResponseError,
     ProOSConnectTimeoutError,
 )
-from pro_os_connect import response as resp
 from pro_os_connect.common import FRAMING_PHRASE, Command, StatusCode, TelemetryFields
 from pro_os_connect.request import GetTimeRequest
+from pro_os_connect.response import (
+    ResponseCommandNotImplementedError,
+    ResponseFramingPhraseError,
+    ResponseInternalError,
+    ResponsePayloadCrcError,
+)
 from pro_os_connect.util import calculate_crc
 
 from .helpers import build_packet, parse_request
@@ -172,33 +177,25 @@ class TestCommands:
         assert response.result == datetime(2026, 10, 27, 19, 27, 46)
 
 
-class TestWrongResultType:
-    """Getters return None when the device answers with an unexpected result type"""
-
+class TestMismatchedResponse:
     @pytest.mark.parametrize(
-        ("method", "command"),
+        ("method", "args", "command"),
         [
-            ("get_software_version", Command.GET_SOFTWARE_VERSION),
-            ("get_serial_number", Command.GET_SERIAL_NUMBER),
+            ("get_software_version", (), Command.GET_SOFTWARE_VERSION),
+            ("get_serial_number", (), Command.GET_SERIAL_NUMBER),
+            ("set_time", (datetime(2026, 11, 13),), Command.SET_TIME),
+            ("pump_start", (), Command.PUMP_START),
+            ("set_setpoint", (200,), Command.SET_SETPOINT),
         ],
     )
-    def test_string_getters(self, client, device, method, command):
+    def test_mismatched_command_raises(self, client, device, method, args, command):
         # A response for a different command than requested
         device.respond(build_packet(Command.GET_PROTOCOL_VERSION, struct.pack("<I", 1)))
-        assert getattr(client, method)() is None
-
-    def test_get_protocol_version(self, client, device):
-        device.respond(build_packet(Command.GET_SOFTWARE_VERSION, b"v1\x00"))
-        assert client.get_protocol_version() is None
-
-    def test_get_time(self, client, device):
-        device.respond(build_packet(Command.GET_SERIAL_NUMBER, b"123\x00"))
-        assert client.get_time() is None
-
-    @pytest.mark.parametrize("method", ["get_telemetry", "get_uptime", "is_running"])
-    def test_telemetry_based(self, client, device, method):
-        device.respond(build_packet(Command.GET_SERIAL_NUMBER, b"123\x00"))
-        assert getattr(client, method)() is None
+        with pytest.raises(
+            ProOSConnectResponseError,
+            match=f"Response command GET_PROTOCOL_VERSION does not match request {command.name}",
+        ):
+            getattr(client, method)(*args)
 
 
 class TestFraming:
@@ -356,17 +353,17 @@ class TestErrorDetails:
         [
             (
                 build_packet(Command.GET_TIME, framing_phrase=0x12345678),
-                resp.ResponseFramingPhraseError,
+                ResponseFramingPhraseError,
                 f"Invalid framing phrase: Response framing phrase invalid: {0x12345678}",
             ),
             (
                 build_packet(Command.GET_TIME, b"abcd", payload_crc=1),
-                resp.ResponsePayloadCrcError,
+                ResponsePayloadCrcError,
                 "Response payload CRC error: Response payload CRC mismatch",
             ),
             (
                 build_packet(Command.GET_TIME, status=0x12345677),
-                resp.ResponseInternalError,
+                ResponseInternalError,
                 f"Response internal error: Invalid value: {0x12345677} is not a valid StatusCode",
             ),
         ],
@@ -389,7 +386,7 @@ class TestErrorDetails:
             client.get_time()
         assert isinstance(exc_info.value, ProOSConnectError)
         assert not isinstance(exc_info.value, (ProOSConnectRequestError, ProOSConnectResponseError))
-        assert type(exc_info.value.__cause__) is resp.ResponseCommandNotImplementedError
+        assert type(exc_info.value.__cause__) is ResponseCommandNotImplementedError
 
     def test_recovers_after_internal_error(self, client, simulated, device):
         handler = device.handler

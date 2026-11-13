@@ -8,36 +8,41 @@ from pro_os_connect.codecs import (
     Codec,
     CodecCstr,
     CodecCstrJson,
+    CodecEmpty,
     CodecInt,
     CodecIsoDateTime,
-    CodecNull,
+    CodecRaw,
     CodecRawHex,
     CodecStruct,
     CodecTelemetryFields,
 )
 from pro_os_connect.common import TelemetryFields
 
+CODEC_FACTORIES = [
+    (Codec.empty, (), CodecEmpty),
+    (Codec.raw, (), CodecRaw),
+    (Codec.cstr, (), CodecCstr),
+    (Codec.struct, ("<I",), CodecStruct),
+    (Codec.telemetry_fields, (), CodecTelemetryFields),
+    (Codec.int, ("<I",), CodecInt),
+    (Codec.iso_datetime, (), CodecIsoDateTime),
+    (Codec.raw_hex, (), CodecRawHex),
+    (Codec.json_cstr, (), CodecCstrJson),
+]
 
-@pytest.mark.parametrize(
-    ("factory", "args", "expected"),
-    [
-        (Codec.null, (), CodecNull),
-        (Codec.cstr, (), CodecCstr),
-        (Codec.struct, ("<I",), CodecStruct),
-        (Codec.telemetry_fields, (), CodecTelemetryFields),
-        (Codec.int, ("<I",), CodecInt),
-        (Codec.iso_datetime, (), CodecIsoDateTime),
-        (Codec.raw_hex, (), CodecRawHex),
-        (Codec.json_cstr, (), CodecCstrJson),
-    ],
-)
+
+def test_all_codecs_are_tested():
+    assert {codec_cls for _, _, codec_cls in CODEC_FACTORIES} == set(Codec.__subclasses__())
+
+
+@pytest.mark.parametrize(("factory", "args", "expected"), CODEC_FACTORIES)
 def test_factories_return_matching_codec(factory, args, expected):
     assert type(factory(*args)) is expected
 
 
 def test_struct_factory_keeps_format():
     assert Codec.struct("<HB").format == "<HB"
-    assert Codec.int(">H").format == ">H"
+    assert Codec.int(">H")._struct.format == ">H"
 
 
 def test_base_codec_is_abstract():
@@ -45,10 +50,10 @@ def test_base_codec_is_abstract():
         Codec()  # pyright: ignore[reportAbstractUsage] - intentional for the test
 
 
-class TestCodecNull:
+class TestCodecRaw:
     @pytest.mark.parametrize("data", [b"", b"\x00", b"Test Echo Payload", bytes(range(256))])
     def test_passes_bytes_through(self, data):
-        codec = CodecNull()
+        codec = CodecRaw()
         assert codec.pack(data) == data
         assert codec.unpack(data) == data
 
@@ -135,7 +140,7 @@ class TestCodecTelemetryFields:
 
     def test_pack_not_supported(self):
         with pytest.raises(NotImplementedError):
-            CodecTelemetryFields().pack(self.FIELDS)
+            CodecTelemetryFields().pack(TelemetryFields.from_iterable(self.FIELDS))
 
     def test_unpack_short_payload_raises(self):
         with pytest.raises(struct.error):
@@ -213,3 +218,8 @@ class TestCodecCstrJson:
     def test_unpack_invalid_json_raises(self):
         with pytest.raises(json.JSONDecodeError):
             CodecCstrJson().unpack(b"{oops\x00")
+
+    @pytest.mark.parametrize("data", [(b"null\x00"), (b"42\x00"), (b'"foo"\x00'), (b"[1,2]\x00")])
+    def test_unpack_non_object_raises(self, data):
+        with pytest.raises(ValueError):
+            CodecCstrJson().unpack(data)

@@ -45,11 +45,11 @@ def build_packet(
     header_crc: int | None = None,
 ) -> bytes:
     """Build a transport packet, optionally overriding any header field to make it invalid"""
-    command = command.value if isinstance(command, Command) else command
-    status = status.value if isinstance(status, StatusCode) else status
+    command_code = command.value if isinstance(command, Command) else command
+    status_code = status.value if isinstance(status, StatusCode) else status
     from_addr = from_addr.value if isinstance(from_addr, Node) else from_addr
     to_addr = to_addr.value if isinstance(to_addr, Node) else to_addr
-    protocol_packet = struct.pack("<IIHH", command, status, from_addr, to_addr) + payload
+    protocol_packet = struct.pack("<IIHH", command_code, status_code, from_addr, to_addr) + payload
     if payload_length is None:
         payload_length = len(protocol_packet)
     if payload_crc is None:
