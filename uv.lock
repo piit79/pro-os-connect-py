@@ -339,7 +339,7 @@ wheels = [
 
 [[package]]
 name = "pro-os-connect-py"
-version = "0.9.4"
+version = "0.9.5"
 source = { editable = "." }
 dependencies = [
     { name = "crccheck" },

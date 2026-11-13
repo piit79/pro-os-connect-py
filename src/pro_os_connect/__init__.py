@@ -4,6 +4,7 @@ import socket
 import time
 from collections.abc import Mapping
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version
 
 from pro_os_connect.common import TelemetryFields
 
@@ -32,6 +33,11 @@ from .response import (
     ResponsePacketIncompleteError,
     StatusCode,
 )
+
+try:
+    __version__ = version("pro-os-connect-py")
+except PackageNotFoundError:  # pragma: no cover
+    __version__ = "0+unknown"
 
 TCP_PORT = 2345
 

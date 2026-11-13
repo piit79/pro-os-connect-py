@@ -14,6 +14,7 @@ from . import (
     ProOSConnectInternalError,
     ProOSConnectRequestError,
     ProOSConnectResponseError,
+    __version__,
 )
 from .common import Node
 
@@ -109,6 +110,7 @@ class ProOSConnectCli:
 
     def get_args(self):
         parser = argparse.ArgumentParser(description="Pro-OS Connect CLI")
+        parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
         parser.add_argument(
             "--device",
             "-d",

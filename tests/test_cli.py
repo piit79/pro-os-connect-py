@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from pro_os_connect import ProOSConnect, ProOSConnectError, cli
+from pro_os_connect import ProOSConnect, ProOSConnectError, __version__, cli
 from pro_os_connect.cli import (
     COMMANDS,
     CliCommand,
@@ -196,6 +196,11 @@ class TestArguments:
         assert code == 0
         assert out == "v2.0.0\n"
         assert "DEBUG: Sending packet:" in err
+
+    def test_version(self, run):
+        code, out, _ = run("--version")
+        assert code == 0
+        assert out == f"pro-os-connect-cli {__version__}\n"
 
 
 class TestTextOutput:
