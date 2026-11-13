@@ -91,6 +91,13 @@ def output_json(data: Mapping):
     print(json.dumps(data, indent=2))
 
 
+def json_result_key(command: str) -> str:
+    for prefix in ("get_", "is_"):
+        if command.startswith(prefix):
+            return command.removeprefix(prefix)
+    return "success"
+
+
 class ProOSConnectCli:
     DONE = object()
 
@@ -99,7 +106,6 @@ class ProOSConnectCli:
         self.command: str = self.args.command
         self.poc = ProOSConnect(self.args.device)
         self.setup_logging()
-        self.json_result_key: str | None = None
 
     def get_args(self):
         parser = argparse.ArgumentParser(description="Pro-OS Connect CLI")
@@ -146,15 +152,6 @@ class ProOSConnectCli:
         if self.args.log_level:
             self.poc.logger.setLevel(self.args.log_level)
 
-    def ensure_json_result_key(self):
-        if self.json_result_key is None:
-            if self.command.startswith("get_"):
-                self.json_result_key = self.command[4:]
-            elif self.command.startswith("is_"):
-                self.json_result_key = self.command[3:]
-            else:
-                self.json_result_key = "success"
-
     def output(self, data, json_data: Mapping | None = None, error=False):
         if self.args.json:
             if json_data is None:
@@ -163,7 +160,7 @@ class ProOSConnectCli:
                 else:
                     if isinstance(data, datetime):
                         data = data.isoformat()
-                    json_data = {self.json_result_key: data}
+                    json_data = {json_result_key(self.command): data}
             output_json(json_data)
         else:
             output_text(data, error=error)
@@ -249,7 +246,6 @@ class ProOSConnectCli:
             exit_code = 9
         else:
             if result is not self.DONE:
-                self.ensure_json_result_key()
                 self.output(result)
         finally:
             self.poc.disconnect()

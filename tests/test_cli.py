@@ -11,6 +11,7 @@ from pro_os_connect.cli import (
     COMMANDS,
     CliCommand,
     ProOSConnectCli,
+    json_result_key,
     main,
     output_json,
     output_text,
@@ -91,6 +92,17 @@ class TestOutputHelpers:
     def test_output_json(self, capsys):
         output_json({"a": [1, True, None]})
         assert json.loads(capsys.readouterr().out) == {"a": [1, True, None]}
+
+    @pytest.mark.parametrize(
+        ("command", "expected"),
+        [
+            ("get_foobar", "foobar"),
+            ("is_thingimijig", "thingimijig"),
+            ("somethingelse", "success"),
+        ],
+    )
+    def test_json_result_key(self, command, expected):
+        assert json_result_key(command) == expected
 
 
 class TestUnsignedLong:
