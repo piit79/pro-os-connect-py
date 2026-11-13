@@ -91,7 +91,7 @@ class ProOSConnect:
             self.socket.close()
             self.socket = None
 
-    def send_request(self, request: Request) -> Response | None:
+    def send_request(self, request: Request) -> Response:
         self.connect()
 
         ok = False
@@ -112,7 +112,7 @@ class ProOSConnect:
 
         return response
 
-    def _send_request(self, request: Request) -> Response | None:
+    def _send_request(self, request: Request) -> Response:
         request_packet = request.get_packet()
         self.logger.debug("Sending packet: %s", request_packet.hex())
         self.socket.sendall(request_packet)  # type: ignore
@@ -157,25 +157,21 @@ class ProOSConnect:
 
     def get_protocol_version(self) -> int | None:
         response = self.send_request(GetProtocolVersionRequest())
-        if not response or not isinstance(response.result, int):
-            return None
-        return response.result
+        return response.result if isinstance(response.result, int) else None
 
-    def echo(self, test_payload: bytes | None = None) -> bool | None:
+    def echo(self, test_payload: bytes | None = None) -> bool:
         if test_payload is None:
             test_payload = b"Test Echo Payload"
         response = self.send_request(EchoRequest(test_payload))
-        if response is None:
-            return None
         return response.result == test_payload
 
     def reboot(self) -> bool:
-        response = self.send_request(RebootRequest())
-        return response is not None
+        self.send_request(RebootRequest())
+        return True
 
     def get_telemetry(self) -> TelemetryFields | None:
         response = self.send_request(GetTelemetryRequest())
-        return response.result if response and isinstance(response.result, TelemetryFields) else None
+        return response.result if isinstance(response.result, TelemetryFields) else None
 
     def get_uptime(self) -> int | None:
         """Return device uptime in seconds."""
@@ -190,36 +186,36 @@ class ProOSConnect:
     def get_time(self) -> datetime | None:
         """Return device time as datetime object"""
         response = self.send_request(GetTimeRequest())
-        return response.result if response and isinstance(response.result, datetime) else None
+        return response.result if isinstance(response.result, datetime) else None
 
     def set_time(self, date_obj: datetime) -> bool:
-        response = self.send_request(SetTimeRequest(date_obj))
-        return response is not None
+        self.send_request(SetTimeRequest(date_obj))
+        return True
 
     def pump_start(self) -> bool:
-        response = self.send_request(PumpStartRequest())
-        return response is not None
+        self.send_request(PumpStartRequest())
+        return True
 
     def pump_stop(self) -> bool:
-        response = self.send_request(PumpStopRequest())
-        return response is not None
+        self.send_request(PumpStopRequest())
+        return True
 
     def get_software_version(self) -> str | None:
         response = self.send_request(GetSoftwareVersionRequest())
-        return response.result if response and isinstance(response.result, str) else None
+        return response.result if isinstance(response.result, str) else None
 
     def get_serial_number(self) -> str | None:
         response = self.send_request(GetSerialNumberRequest())
-        return response.result if response and isinstance(response.result, str) else None
+        return response.result if isinstance(response.result, str) else None
 
     def get_cpu_serial_number(self) -> str | None:
         response = self.send_request(GetCpuSerialNumberRequest())
-        return response.result if response else None
+        return response.result if isinstance(response.result, str) else None
 
     def get_network_configuration(self) -> Mapping | None:
         response = self.send_request(GetNetworkConfigurationRequest())
-        return response.result if response else None
+        return response.result if isinstance(response.result, Mapping) else None
 
     def set_setpoint(self, setpoint: int) -> bool:
-        response = self.send_request(SetSetpointRequest(setpoint))
-        return response is not None
+        self.send_request(SetSetpointRequest(setpoint))
+        return True

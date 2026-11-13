@@ -3,9 +3,10 @@ import json
 import logging
 import sys
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from time import sleep, time
+from typing import Any
 
 from . import (
     ProOSConnect,
@@ -38,43 +39,39 @@ def unsigned_long(value: str) -> int:
     return ivalue
 
 
+@dataclass(frozen=True)
 class CliCommand:
-    def __init__(self, command: str, help: str = "", args: Iterable | None = None):
-        self.command = command
-        self.help = help
-        self.args = args if args else []
+    command: str
+    help: str = ""
+    args: Iterable[tuple[tuple, Mapping[str, Any]]] = ()
 
 
-COMMANDS = {
+COMMANDS = [
     CliCommand("get_protocol_version", help="Get Pro OS Connect protocol version"),
     CliCommand(
         "echo",
         help="Send an echo request",
-        args=[
-            (("--payload", "-p"), {"type": str, "help": "Test payload for echo command"}),
-        ],
+        args=((("--payload", "-p"), {"type": str, "help": "Test payload for echo command"}),),
     ),
     CliCommand("reboot", help="Reboot the device"),
     CliCommand("get_telemetry", help="Get device telemetry"),
-    CliCommand("get_setpoint", help="Get current target air flow"),
+    CliCommand("get_setpoint", help="Get current target flow rate"),
     CliCommand("get_uptime", help="Get device uptime in seconds"),
-    CliCommand("is_running", help="Returns 1 if the pump is running, 0 otherwise"),
-    CliCommand("get_time", help="Returns the device time"),
-    CliCommand("set_time", help="Sets the device time to current time"),
+    CliCommand("is_running", help="Check whether the pump is running (1/0)"),
+    CliCommand("get_time", help="Get the device time"),
+    CliCommand("set_time", help="Set the device time to the current time"),
     CliCommand("pump_start", help="Start the pump"),
     CliCommand("pump_stop", help="Stop the pump"),
     CliCommand("get_software_version", help="Get the device software version"),
     CliCommand("get_serial_number", help="Get the device serial number"),
     CliCommand("get_cpu_serial_number", help="Get the main CPU serial number"),
-    CliCommand("get_network_configuration", help="Retrieve the device network configuration"),
+    CliCommand("get_network_configuration", help="Get the device network configuration"),
     CliCommand(
         "set_setpoint",
-        help="Set the target air flow",
-        args=[
-            (("setpoint",), {"type": unsigned_long, "help": f"Air flow value to set (0-{UNSIGNED_LONG_MAX})"}),
-        ],
+        help="Set the target flow rate",
+        args=((("setpoint",), {"type": unsigned_long, "help": f"Flow rate to set (0-{UNSIGNED_LONG_MAX})"}),),
     ),
-}
+]
 
 
 def output_text(data: str | bool | Mapping, error=False):
@@ -178,8 +175,6 @@ class ProOSConnectCli:
         test_payload = self.args.payload.encode("utf-8") if self.args.payload else None
         start_time = time()
         res = self.poc.echo(test_payload)
-        if res is None:
-            return None
         if res:
             rtt = round((time() - start_time) * 1000, 2)  # Round trip time in milliseconds
             self.output(f"Echo response received in {rtt} ms", {"success": True, "time": rtt})
@@ -209,16 +204,14 @@ class ProOSConnectCli:
         return fields.setpoint if fields else None
 
     def set_setpoint(self):
-        res = self.poc.set_setpoint(self.args.setpoint)
-        if not res:
-            raise CliError("Error setting setpoint")
+        self.poc.set_setpoint(self.args.setpoint)
         sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
         setpoint = self.get_setpoint()
         if setpoint is None:
             raise CliError("Error getting new setpoint")
         self.output(
             f"Setpoint set to {setpoint}",
-            {"success": res, "setpoint": setpoint},
+            {"success": True, "setpoint": setpoint},
         )
         return self.DONE
 

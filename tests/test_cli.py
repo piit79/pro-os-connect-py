@@ -380,24 +380,12 @@ class TestErrors:
         assert code == 6
         assert "WRITE_PROTECTED" in err
 
-    def test_set_setpoint_reports_failure(self, run, simulated, monkeypatch):
-        monkeypatch.setattr(ProOSConnect, "set_setpoint", lambda self, setpoint: False)
-        code, _, err = run("set_setpoint", "100")
-        assert code == 9
-        assert err == "Error setting setpoint\n"
-
     def test_set_setpoint_cannot_read_back(self, run, simulated, monkeypatch):
         monkeypatch.setattr(cli, "sleep", lambda seconds: None)
         monkeypatch.setattr(ProOSConnect, "get_telemetry", lambda self: None)
         code, _, err = run("set_setpoint", "100")
         assert code == 9
         assert err == "Error getting new setpoint\n"
-
-    def test_echo_without_response_exits_9(self, run, simulated, monkeypatch):
-        monkeypatch.setattr(ProOSConnect, "echo", lambda self, payload: None)
-        code, _, err = run("echo")
-        assert code == 9
-        assert err == "No result received\n"
 
     def test_invalid_command(self, run, device, monkeypatch):
         monkeypatch.setattr(cli, "COMMANDS", [*COMMANDS, CliCommand("get_foobar")])
