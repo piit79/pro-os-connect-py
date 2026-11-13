@@ -31,14 +31,27 @@ package = true
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17.4",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--strict-markers", "--strict-config", "-ra"]
+addopts = ["--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--cov=pro_os_connect",
+    "--cov-report=term-missing",
+    "--cov-fail-under=99",
+]
 xfail_strict = true
 filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true  # also report if/else branches that never ran
+
+[tool.coverage.report]
+exclude_also = ['if __name__ == "__main__":']
 
 [tool.ruff]
 line-length = 120

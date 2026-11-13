@@ -11,3 +11,7 @@ wheels/
 
 # vscode
 .vscode
+
+# code coverage
+.coverage
+htmlcov/
