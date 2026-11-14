@@ -113,7 +113,8 @@ try:
     telemetry = poc.get_telemetry()
     print(f"Flow rate: {telemetry.flow_rate:.1f}, running: {bool(telemetry.is_running)}")
 
-    poc.set_setpoint(300)
+    setpoint = poc.set_setpoint(300)
+    print(f"Setpoint set to {setpoint}")
     poc.pump_start()
 except ProOSConnectError as e:
     print(f"Device error: {e}")
@@ -133,7 +134,8 @@ fails, the connection is closed and the next request opens a new one.
 | `get_uptime()` | `int`, seconds |
 | `is_running()` | `bool` |
 | `pump_start()`, `pump_stop()` | `bool` |
-| `set_setpoint(setpoint: int)` | `bool` |
+| `get_setpoint()` | `int` |
+| `set_setpoint(setpoint: int, read_back: bool = True)` | `int \| None`, the new setpoint as read from the device if `read_back=True`, or `None` |
 | `get_time()` | `datetime` |
 | `set_time(date_obj: datetime)` | `bool`, sent without fractional seconds or time zone |
 | `get_software_version()` | `str` |

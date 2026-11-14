@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 
+import pro_os_connect
 from pro_os_connect import (
     TCP_PORT,
     ProOSConnect,
@@ -165,16 +166,54 @@ class TestCommands:
             "write_enabled": True,
         }
 
-    def test_set_setpoint(self, client, simulated, device):
-        assert client.set_setpoint(175) is True
-        assert parse_request(device.requests[-1])[3] == struct.pack("<I", 175)
-        assert simulated.setpoint == 175
-        assert client.get_telemetry().setpoint == 175
+    def test_get_setpoint(self, client, simulated):
+        assert client.get_setpoint() == 150
+
+    @pytest.mark.parametrize(
+        ("setpoint", "read_back", "expected_result", "expected_setpoint"),
+        [(50, True, 100, 100), (150, True, 150, 150), (300, True, 200, 200), (120, False, None, 120)],
+    )
+    def test_set_setpoint(self, client, simulated, device, setpoint, read_back, expected_result, expected_setpoint):
+        assert client.set_setpoint(setpoint, read_back=read_back) == expected_result
+        index = -2 if read_back else -1  # With read_back=True, -2 is set_setpoint, -1 is get_telemetry
+        assert parse_request(device.requests[index])[3] == struct.pack("<I", setpoint)
+        assert simulated.setpoint == expected_setpoint
+        assert client.get_telemetry().setpoint == expected_setpoint
 
     def test_send_request_returns_response(self, client, simulated):
         response = client.send_request(GetTimeRequest())
         assert response.status is StatusCode.OK
         assert response.result == datetime(2026, 10, 27, 19, 27, 46)
+
+
+class TestSetpointReadBackDelay:
+    DELAY = 0.123  # Distinctive value; the autouse fixture would otherwise make it 0
+
+    @pytest.fixture
+    def sleeps(self, monkeypatch, device):
+        """Record each sleep together with the commands the device had received at that moment"""
+        calls = []
+        monkeypatch.setattr(pro_os_connect, "SETPOINT_READBACK_DELAY", self.DELAY)
+        monkeypatch.setattr(pro_os_connect.time, "sleep", lambda s: calls.append((s, sent_commands(device))))
+        return calls
+
+    def test_waits_between_set_and_read_back(self, client, simulated, device, sleeps):
+        client.set_setpoint(120)
+        # Slept exactly once, after the set request and before the telemetry read-back
+        assert sleeps == [(self.DELAY, [Command.SET_SETPOINT])]
+        assert sent_commands(device) == [Command.SET_SETPOINT, Command.GET_TELEMETRY]
+
+    def test_no_wait_without_read_back(self, client, simulated, device, sleeps):
+        client.set_setpoint(120, read_back=False)
+        assert sleeps == []
+        assert sent_commands(device) == [Command.SET_SETPOINT]
+
+    def test_no_wait_when_set_fails(self, client, simulated, device, sleeps):
+        simulated.status = StatusCode.WRITE_PROTECTED
+        with pytest.raises(ProOSConnectResponseError):
+            client.set_setpoint(120)
+        assert sleeps == []
+        assert sent_commands(device) == [Command.SET_SETPOINT]
 
 
 class TestMismatchedResponse:
@@ -272,9 +311,9 @@ class TestErrors:
     def test_recovers_after_error(self, client, simulated, device):
         simulated.status = StatusCode.WRITE_PROTECTED
         with pytest.raises(ProOSConnectResponseError):
-            client.set_setpoint(100)
+            client.set_setpoint(120)
         simulated.status = StatusCode.OK
-        assert client.set_setpoint(100) is True
+        assert client.set_setpoint(120) == 120
         assert device.connections == 2
 
     def test_recovers_after_timeout(self, client, simulated, device):

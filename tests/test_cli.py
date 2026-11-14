@@ -263,11 +263,10 @@ class TestTextOutput:
         _, out, _ = run("is_running")
         assert out == "1\n"
 
-    def test_set_setpoint(self, run, simulated, monkeypatch):
-        monkeypatch.setattr(cli, "sleep", lambda seconds: None)
-        code, out, _ = run("set_setpoint", "200")
-        assert (code, out) == (0, "Setpoint set to 200\n")
-        assert simulated.setpoint == 200
+    def test_set_setpoint(self, run, simulated):
+        code, out, _ = run("set_setpoint", "180")
+        assert (code, out) == (0, "Setpoint set to 180\n")
+        assert simulated.setpoint == 180
 
     def test_echo(self, run, simulated, device):
         code, out, _ = run("echo")
@@ -322,8 +321,7 @@ class TestJsonOutput:
         assert data["is_running"] == 0
         assert len(data) == 14
 
-    def test_set_setpoint(self, run, simulated, monkeypatch):
-        monkeypatch.setattr(cli, "sleep", lambda seconds: None)
+    def test_set_setpoint(self, run, simulated):
         _, out, _ = run("-j", "set_setpoint", "120")
         assert json.loads(out) == {"success": True, "setpoint": 120}
 
