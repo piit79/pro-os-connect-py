@@ -40,6 +40,7 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "0+unknown"
 
 TCP_PORT = 2345
+SETPOINT_READBACK_DELAY = 0.010  # Wait 10 ms before reading back new setpoint
 
 
 class ProOSConnectError(Exception):
@@ -227,6 +228,14 @@ class ProOSConnect:
         response = self.send_request(GetNetworkConfigurationRequest())
         return response.result
 
-    def set_setpoint(self, setpoint: int) -> bool:
+    def get_setpoint(self) -> int:
+        fields = self.get_telemetry()
+        return fields.setpoint
+
+    def set_setpoint(self, setpoint: int, read_back: bool = True) -> int | None:
+        """Set setpoint and return setpoint read from device, or None if not read_back"""
         self.send_request(SetSetpointRequest(setpoint))
-        return True
+        if read_back:
+            time.sleep(SETPOINT_READBACK_DELAY)
+            return self.get_setpoint()
+        return None

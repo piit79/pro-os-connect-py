@@ -5,7 +5,7 @@ import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from time import sleep, time
+from time import time
 from typing import Any
 
 from . import (
@@ -17,8 +17,6 @@ from . import (
     __version__,
 )
 from .common import Node
-
-COMMAND_COOLDOWN = 0.100  # Minimum time between commands in seconds
 
 UNSIGNED_LONG_MAX = 2**32 - 1
 
@@ -196,14 +194,8 @@ class ProOSConnectCli:
     def get_network_configuration(self):
         return self.poc.get_network_configuration()
 
-    def get_setpoint(self) -> int:
-        fields = self.poc.get_telemetry()
-        return fields.setpoint
-
     def set_setpoint(self):
-        self.poc.set_setpoint(self.args.setpoint)
-        sleep(COMMAND_COOLDOWN)  # Wait a bit otherwise the old setpoint will be returned
-        setpoint = self.get_setpoint()
+        setpoint = self.poc.set_setpoint(self.args.setpoint)
         self.output(
             f"Setpoint set to {setpoint}",
             {"success": True, "setpoint": setpoint},

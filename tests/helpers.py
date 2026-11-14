@@ -160,6 +160,8 @@ class SimulatedDevice:
 
     def __init__(self):
         self.setpoint = 150
+        self.min_setpoint = 100
+        self.max_setpoint = 200
         self.running = False
         self.time = "2026-10-27T19:27:46"
         self.status = StatusCode.OK
@@ -211,7 +213,8 @@ class SimulatedDevice:
             case Command.GET_NETWORK_CONFIGURATION:
                 result = b'{\n    "manual": {},\n    "write_enabled": true\n  }\x00'
             case Command.SET_SETPOINT:
-                (self.setpoint,) = struct.unpack("<I", payload)
+                (setpoint,) = struct.unpack("<I", payload)
+                self.setpoint = min(max(setpoint, self.min_setpoint), self.max_setpoint)
                 result = b""
             case _:
                 return [build_packet(command, status=StatusCode.INVALID_COMMAND)]

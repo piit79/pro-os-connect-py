@@ -1,5 +1,6 @@
 import pytest
 
+import pro_os_connect
 from pro_os_connect import ProOSConnect
 
 from .helpers import FakeDevice, SimulatedDevice
@@ -25,3 +26,8 @@ def simulated(device):
     state = SimulatedDevice()
     device.handler = state
     return state
+
+
+@pytest.fixture(autouse=True)
+def no_readback_delay(monkeypatch):
+    monkeypatch.setattr(pro_os_connect, "SETPOINT_READBACK_DELAY", 0)
