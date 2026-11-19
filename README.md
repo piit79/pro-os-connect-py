@@ -122,9 +122,24 @@ finally:
     poc.disconnect()
 ```
 
-`ProOSConnect(host, port=2345, timeout=2.0)` connects on the first request and keeps
-the connection open for later requests until `disconnect()` is called. If a request
-fails, the connection is closed and the next request opens a new one.
+`ProOSConnect(host, port=2345, timeout=2.0, keep_connection=True)` connects on the first
+request and keeps the connection open for later requests until `disconnect()` is called.
+If a request fails, the connection is closed and the next request opens a new one.
+
+The device accepts only one connection at a time. With `keep_connection=False`, the client
+connects for each request and disconnects right after it, so other clients can connect
+in between. To send several requests over one connection anyway, use `hold_connection()`:
+
+```python
+poc = ProOSConnect("bofa.local", keep_connection=False)
+with poc.hold_connection():
+    telemetry = poc.get_telemetry()
+    clock = poc.get_time()
+# Disconnected here
+```
+
+The connection is opened by the first request in the block and closed when the block
+exits. Blocks can be nested. With `keep_connection=True`, `hold_connection()` has no effect.
 
 ### Methods
 
@@ -146,6 +161,7 @@ fails, the connection is closed and the next request opens a new one.
 | `echo(test_payload: bytes \| None = None)` | `bool`, whether the device sent the payload back unchanged |
 | `reboot()` | `bool` |
 | `connect(force=False)`, `disconnect()` | Manage the connection explicitly |
+| `hold_connection()` | Context manager: keep one connection open for the requests in the block |
 
 Errors are raised as exceptions (see below).
 
