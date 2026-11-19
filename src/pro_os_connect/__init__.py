@@ -2,7 +2,8 @@ import logging
 import select
 import socket
 import time
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 
@@ -70,11 +71,18 @@ class ProOSConnectInternalError(ProOSConnectError):
 class ProOSConnect:
     """Main class for connecting to a Pro OS device and sending requests."""
 
-    def __init__(self, host: str, port: int = TCP_PORT, timeout: float = 2.0):
+    def __init__(self, host: str, port: int = TCP_PORT, timeout: float = 2.0, keep_connection: bool = True):
+        """
+        :param keep_connection: Keep the connection open between requests until disconnect() is called. If False,
+            connect for each request and disconnect after it, so other clients can connect in between (the device
+            accepts only one connection at a time).
+        """
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.keep_connection = keep_connection
         self.socket: socket.socket | None = None
+        self._hold_depth = 0  # Number of open hold_connection() blocks
         self.logger = logging.getLogger(__name__)
 
     def connect(self, force: bool = False):
@@ -98,10 +106,25 @@ class ProOSConnect:
             self.socket.close()
             self.socket = None
 
+    @contextmanager
+    def hold_connection(self) -> Generator["ProOSConnect", None, None]:
+        """Send all requests in the block over one connection, even with keep_connection=False.
+
+        The connection is opened by the first request in the block. If a request fails, the next one reconnects.
+        With keep_connection=False, the connection is closed when the outermost block exits. Blocks can be nested.
+        """
+        self._hold_depth += 1
+        try:
+            yield self
+        finally:
+            self._hold_depth -= 1
+            if self._hold_depth == 0 and not self.keep_connection:
+                self.disconnect()
+
     def send_request(self, request: Request) -> Response:
         self.connect()
 
-        ok = False
+        err = True
         try:
             response = self._send_request(request)
         except OSError as e:
@@ -111,10 +134,10 @@ class ProOSConnect:
         except ResponseDecodeError as e:
             raise ProOSConnectResponseError(e) from e
         else:
-            ok = True
+            err = False
             self.logger.debug("Request sent and response received successfully")
         finally:
-            if not ok:
+            if err or not (self.keep_connection or self._hold_depth):
                 self.disconnect()
 
         return response
@@ -234,8 +257,9 @@ class ProOSConnect:
 
     def set_setpoint(self, setpoint: int, read_back: bool = True) -> int | None:
         """Set setpoint and return setpoint read from device, or None if not read_back"""
-        self.send_request(SetSetpointRequest(setpoint))
-        if read_back:
-            time.sleep(SETPOINT_READBACK_DELAY)
-            return self.get_setpoint()
+        with self.hold_connection():
+            self.send_request(SetSetpointRequest(setpoint))
+            if read_back:
+                time.sleep(SETPOINT_READBACK_DELAY)
+                return self.get_setpoint()
         return None

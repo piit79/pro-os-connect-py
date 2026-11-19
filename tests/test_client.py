@@ -97,6 +97,116 @@ class TestConnection:
             Command.GET_SERIAL_NUMBER,
         ]
 
+    def test_keep_connection_default(self):
+        assert ProOSConnect("example.invalid").keep_connection is True
+
+
+class TestWithoutKeepConnection:
+    @pytest.fixture
+    def client(self, device):
+        poc = ProOSConnect("127.0.0.1", device.port, timeout=0.3, keep_connection=False)
+        yield poc
+        poc.disconnect()
+
+    def test_disconnects_after_request(self, client, simulated, device):
+        assert client.get_protocol_version() == 1
+        assert client.socket is None
+
+    def test_new_connection_per_request(self, client, simulated, device):
+        client.get_protocol_version()
+        client.get_software_version()
+        client.get_serial_number()
+        assert device.connections == 3
+        assert sent_commands(device) == [
+            Command.GET_PROTOCOL_VERSION,
+            Command.GET_SOFTWARE_VERSION,
+            Command.GET_SERIAL_NUMBER,
+        ]
+
+    def test_set_setpoint_reads_back_on_same_connection(self, client, simulated, device):
+        assert client.set_setpoint(120) == 120
+        assert device.connections == 1
+        assert sent_commands(device) == [Command.SET_SETPOINT, Command.GET_TELEMETRY]
+        assert client.socket is None
+
+    def test_disconnects_after_error(self, client, simulated, device):
+        simulated.status = StatusCode.WRITE_PROTECTED
+        with pytest.raises(ProOSConnectResponseError):
+            client.set_setpoint(120)
+        assert client.socket is None
+
+
+class TestHoldConnection:
+    @pytest.fixture
+    def client(self, device):
+        poc = ProOSConnect("127.0.0.1", device.port, timeout=0.3, keep_connection=False)
+        yield poc
+        poc.disconnect()
+
+    def test_one_connection_in_block(self, client, simulated, device):
+        with client.hold_connection():
+            client.get_protocol_version()
+            client.get_software_version()
+            assert client.socket is not None
+        assert client.socket is None
+        assert device.connections == 1
+        assert sent_commands(device) == [Command.GET_PROTOCOL_VERSION, Command.GET_SOFTWARE_VERSION]
+
+    def test_yields_client(self, client):
+        with client.hold_connection() as poc:
+            assert poc is client
+
+    def test_connects_lazily(self, client, simulated, device):
+        with client.hold_connection():
+            assert client.socket is None
+        assert device.connections == 0
+
+    def test_disconnects_after_block_again(self, client, simulated, device):
+        with client.hold_connection():
+            client.get_protocol_version()
+        client.get_protocol_version()
+        assert client.socket is None
+        assert device.connections == 2
+
+    def test_nested_blocks(self, client, simulated, device):
+        with client.hold_connection():
+            with client.hold_connection():
+                client.get_protocol_version()
+            assert client.socket is not None  # Inner block must not close the outer block's connection
+            client.set_setpoint(120)  # Holds the connection internally too
+            assert client.socket is not None
+        assert client.socket is None
+        assert device.connections == 1
+
+    def test_reconnects_after_error_in_block(self, client, simulated, device):
+        with client.hold_connection():
+            simulated.status = StatusCode.WRITE_PROTECTED
+            with pytest.raises(ProOSConnectResponseError):
+                client.get_protocol_version()
+            assert client.socket is None
+            simulated.status = StatusCode.OK
+            client.get_protocol_version()
+            assert client.socket is not None
+        assert client.socket is None
+        assert device.connections == 2
+
+    def test_disconnects_when_block_raises(self, client, simulated, device):
+        with pytest.raises(RuntimeError), client.hold_connection():
+            client.get_protocol_version()
+            raise RuntimeError("caller error")
+        assert client.socket is None
+
+    def test_no_effect_with_keep_connection(self, device, simulated):
+        poc = ProOSConnect("127.0.0.1", device.port, timeout=0.3)
+        try:
+            with poc.hold_connection():
+                poc.get_protocol_version()
+            assert poc.socket is not None
+            poc.get_software_version()
+            assert device.connections == 1
+        finally:
+            poc.disconnect()
+
 
 class TestCommands:
     def test_get_protocol_version(self, client, simulated):
