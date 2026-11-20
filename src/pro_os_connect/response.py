@@ -3,7 +3,7 @@ import struct
 from collections.abc import Mapping
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, NoReturn, TypeVar
 
 from .codecs import Codec
 from .common import FRAMING_PHRASE, Command, Node, StatusCode, TelemetryFields
@@ -96,37 +96,37 @@ class ResponsePacket:
 
     def is_valid(self) -> bool:
         try:
-            self.parse_transport_packet(test=True)
+            self.parse_transport_packet()
         except ResponseError:
             return False
 
         return True
 
-    def parse_transport_packet(self, test=False):
+    def parse_transport_packet(self):
+        """Validate the transport header and payload and split the packet.
+
+        Errors are only logged at DEBUG: the raised exception carries the message, so callers that handle it don't
+        get an error in their log for every corrupted packet.
+        """
         if len(self) < self.TRANSPORT_HEADER_SIZE:
             raise ResponsePacketIncompleteError()
         self.transport_header = self.data[: self.TRANSPORT_HEADER_SIZE]
         self.protocol_packet = self.data[self.TRANSPORT_HEADER_SIZE :]
         framing_phrase, payload_length, payload_crc, header_crc = struct.unpack("<IIII", self.transport_header)
         if framing_phrase != FRAMING_PHRASE:
-            msg = f"Response framing phrase invalid: {framing_phrase}"
-            self.logger.error(msg)
-            raise ResponseFramingPhraseError(msg)
+            self._fail(ResponseFramingPhraseError(f"0x{framing_phrase:x}"))
         calculated_header_crc = calculate_crc(self.transport_header[:12])
         if calculated_header_crc != header_crc:
-            msg = f"Response header CRC mismatch: calculated={calculated_header_crc} actual={header_crc}"
-            self.logger.error(msg)
-            raise ResponseHeaderCrcError(msg)
+            self._fail(ResponseHeaderCrcError(f"received=0x{header_crc:x} calculated=0x{calculated_header_crc:x}"))
         if len(self.protocol_packet) != payload_length:
-            msg = f"Response payload length mismatch: actual={len(self.protocol_packet)} header={payload_length}"
-            level = logging.DEBUG if test else logging.ERROR
-            self.logger.log(level, msg)
-            raise ResponsePayloadLengthError(msg)
+            self._fail(ResponsePayloadLengthError(f"header={payload_length} actual={len(self.protocol_packet)}"))
         calculated_payload_crc = calculate_crc(self.protocol_packet)
         if calculated_payload_crc != payload_crc:
-            msg = "Response payload CRC mismatch: calculated=%x received=%x"
-            self.logger.error(msg, calculated_payload_crc, payload_crc)
-            raise ResponsePayloadCrcError("Response payload CRC mismatch")
+            self._fail(ResponsePayloadCrcError(f"received=0x{payload_crc:x} calculated=0x{calculated_payload_crc:x}"))
+
+    def _fail(self, error: ResponseError) -> NoReturn:
+        self.logger.debug("%s", error)
+        raise error
 
     def parse_protocol_packet(self):
         self.protocol_header = self.protocol_packet[: self.PROTOCOL_HEADER_SIZE]
