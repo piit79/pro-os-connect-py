@@ -233,6 +233,8 @@ class ProOSConnectCli:
             self.error(str(e))
             exit_code = 9
         else:
+            if result is None:  # Action methods return None on success
+                result = True
             if result is not self.DONE:
                 self.output(result)
         finally:

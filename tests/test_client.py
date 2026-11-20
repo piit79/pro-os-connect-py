@@ -230,7 +230,7 @@ class TestCommands:
 
     def test_reboot(self, client, simulated, device):
         device.respond(build_packet(Command.REBOOT))
-        assert client.reboot() is True
+        assert client.reboot() is None
         assert sent_commands(device) == [Command.REBOOT]
 
     def test_get_telemetry(self, client, simulated):
@@ -252,15 +252,15 @@ class TestCommands:
         assert client.get_time() == datetime(2026, 10, 27, 19, 27, 46)
 
     def test_set_time(self, client, simulated, device):
-        assert client.set_time(datetime(2025, 1, 2, 3, 4, 5, 678)) is True
+        assert client.set_time(datetime(2025, 1, 2, 3, 4, 5, 678)) is None
         assert parse_request(device.requests[-1])[3] == b"2025-01-02T03:04:05\x00"
         assert client.get_time() == datetime(2025, 1, 2, 3, 4, 5)
 
     def test_pump_start_and_stop(self, client, simulated):
-        assert client.pump_start() is True
+        assert client.pump_start() is None
         assert simulated.running
         assert client.is_running() is True
-        assert client.pump_stop() is True
+        assert client.pump_stop() is None
         assert not simulated.running
         assert client.is_running() is False
 
