@@ -176,8 +176,9 @@ class ProOSConnect:
         readers = [self.socket]
         select_timeout = 0.1  # seconds
         resp_packet = ResponsePacket()
-        start_time = time.time()
-        while not resp_packet.is_valid() and (time.time() - start_time) < self.timeout:
+        # Monotonic clock: a wall-clock step (e.g. an NTP correction) must not shorten or extend the timeout
+        start_time = time.monotonic()
+        while not resp_packet.is_valid() and (time.monotonic() - start_time) < self.timeout:
             read_ready, _, _ = select.select(readers, [], [], select_timeout)
             if not read_ready:
                 continue

@@ -1,5 +1,7 @@
+import itertools
 import socket
 import struct
+import time
 from datetime import datetime
 
 import pytest
@@ -348,6 +350,19 @@ class TestMismatchedResponse:
             match=f"Response command GET_PROTOCOL_VERSION does not match request {command.name}",
         ):
             getattr(client, method)(*args)
+
+
+class TestClockChanges:
+    def test_wall_clock_jump_does_not_affect_timeout(self, client, simulated, monkeypatch):
+        """A wall-clock step (e.g. an NTP correction) during a request must not end the wait early.
+
+        With time.time(), jumping an hour ahead after the first reading made the request time out before reading the
+        response. A backward jump would make it wait far past the timeout instead, but that can't be tested quickly.
+        """
+        real_time = time.time
+        readings = itertools.count()
+        monkeypatch.setattr(time, "time", lambda: real_time() + (3600 if next(readings) else 0))
+        assert client.get_protocol_version() == 1
 
 
 class TestFraming:
