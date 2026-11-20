@@ -5,7 +5,7 @@ import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from time import time
+from time import perf_counter
 from typing import Any
 
 from . import (
@@ -163,10 +163,10 @@ class ProOSConnectCli:
 
     def echo(self):
         test_payload = self.args.payload.encode("utf-8") if self.args.payload else None
-        start_time = time()
+        start_time = perf_counter()
         res = self.poc.echo(test_payload)
         if res:
-            rtt = round((time() - start_time) * 1000, 2)  # Round trip time in milliseconds
+            rtt = round((perf_counter() - start_time) * 1000, 2)  # Round trip time in milliseconds
             self.output(f"Echo response received in {rtt} ms", {"success": True, "time": rtt})
         else:
             raise CliError("Echo response incorrect")

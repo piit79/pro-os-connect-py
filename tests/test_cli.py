@@ -334,7 +334,7 @@ class TestJsonOutput:
         rtt_ms = 542.0
         clock_start = 10.000
         clock = iter([clock_start, clock_start + rtt_ms / 1000])
-        monkeypatch.setattr(cli, "time", lambda: next(clock))
+        monkeypatch.setattr(cli, "perf_counter", lambda: next(clock))
         _, out, _ = run("-j", "echo")
         assert json.loads(out)["time"] == rtt_ms
 
