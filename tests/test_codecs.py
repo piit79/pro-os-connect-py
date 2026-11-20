@@ -57,6 +57,16 @@ class TestCodecRaw:
         assert codec.pack(data) == data
         assert codec.unpack(data) == data
 
+    def test_pack_accepts_bytearray(self):
+        packed = CodecRaw().pack(bytearray(b"abc"))
+        assert packed == b"abc"
+        assert type(packed) is bytes
+
+    @pytest.mark.parametrize("data", ["text", None, 1, [1, 2]])
+    def test_pack_wrong_type_raises(self, data):
+        with pytest.raises(TypeError, match=f"Expected bytes or bytearray, got {type(data).__name__}"):
+            CodecRaw().pack(data)
+
 
 class TestCodecCstr:
     def test_pack_appends_null_terminator(self):
@@ -67,6 +77,11 @@ class TestCodecCstr:
 
     def test_pack_encodes_utf8(self):
         assert CodecCstr().pack("Žluťoučký") == "Žluťoučký".encode() + b"\x00"
+
+    @pytest.mark.parametrize("data", [b"v2.0.0", None, 1])
+    def test_pack_wrong_type_raises(self, data):
+        with pytest.raises(TypeError, match=f"Expected str, got {type(data).__name__}"):
+            CodecCstr().pack(data)
 
     @pytest.mark.parametrize(
         ("payload", "expected"),
@@ -116,9 +131,15 @@ class TestCodecInt:
     def test_little_endian(self):
         assert CodecInt("<I").pack(1) == b"\x01\x00\x00\x00"
 
-    def test_out_of_range_raises(self):
-        with pytest.raises(struct.error):
-            CodecInt("<I").pack(-1)
+    @pytest.mark.parametrize(("fmt", "value"), [("<I", -1), ("<I", 2**32), ("<B", 256), ("<b", -129)])
+    def test_out_of_range_raises_value_error(self, fmt, value):
+        with pytest.raises(ValueError, match=f"{value} is out of range for struct format '{fmt}'"):
+            CodecInt(fmt).pack(value)
+
+    @pytest.mark.parametrize("value", [True, False, 1.0, "1", None, b"\x01"])
+    def test_wrong_type_raises_type_error(self, value):
+        with pytest.raises(TypeError, match=f"Expected int, got {type(value).__name__}"):
+            CodecInt("<I").pack(value)
 
 
 class TestCodecTelemetryFields:
@@ -181,6 +202,11 @@ class TestCodecIsoDateTime:
     def test_unpack_invalid_raises(self):
         with pytest.raises(ValueError):
             CodecIsoDateTime().unpack(b"not a date\x00")
+
+    @pytest.mark.parametrize("data", ["2026-10-27T19:27:46", None, 1761593266])
+    def test_pack_wrong_type_raises(self, data):
+        with pytest.raises(TypeError, match=f"Expected datetime, got {type(data).__name__}"):
+            CodecIsoDateTime().pack(data)
 
 
 class TestCodecRawHex:

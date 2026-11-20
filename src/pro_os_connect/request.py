@@ -17,12 +17,15 @@ class Request:
         """
         :param data: Command data
         :type data: Any
+        :raises TypeError: If data has the wrong type for the request
+        :raises ValueError: If data is out of range for the request
         :param to_addr: Destination address - Node.PRO_OS or Node.NETWORK_CARD
         :type to_addr: Node
         """
         if self.COMMAND is Command.NONE:
             raise TypeError(f"{type(self).__name__} must define COMMAND")
         self.data = data
+        self.payload = self.CODEC.pack(data)  # Encode now, so invalid data raises before anything is sent
         self.from_addr = Node.CLIENT
         self.to_addr = to_addr
         self.logger = logging.getLogger(__name__)
@@ -60,7 +63,7 @@ class Request:
 
     def get_payload(self) -> bytes:
         """Return the encoded command data"""
-        return self.CODEC.pack(self.data)
+        return self.payload
 
     def get_packet(self) -> bytes:
         """Create and return the network packet data"""

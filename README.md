@@ -181,7 +181,7 @@ Errors are raised as exceptions (see below).
 
 ### Errors
 
-All errors raised by `ProOSConnect` derive from `ProOSConnectError`:
+Errors communicating with the device derive from `ProOSConnectError`:
 
 ```
 ProOSConnectError
@@ -191,6 +191,11 @@ ProOSConnectError
 ├── ProOSConnectResponseError     invalid response, undecodable payload or error status
 └── ProOSConnectInternalError     response command not supported by the library
 ```
+
+Invalid arguments raise `TypeError` (wrong type, including `bool` where an `int` is expected)
+or `ValueError` (out of range, e.g. a negative setpoint) before anything is sent, and leave
+the connection untouched. They are bugs in the calling code, not device errors, so they
+don't derive from `ProOSConnectError`.
 
 ## Protocol notes
 

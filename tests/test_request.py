@@ -110,9 +110,22 @@ def test_set_setpoint_payload(setpoint):
     assert payload == struct.pack("<I", setpoint)
 
 
-def test_set_setpoint_negative_raises():
-    with pytest.raises(struct.error):
-        req.SetSetpointRequest(-1).get_packet()
+@pytest.mark.parametrize(
+    ("cls", "data", "error"),
+    [
+        (req.SetSetpointRequest, -1, ValueError),
+        (req.SetSetpointRequest, 2**32, ValueError),
+        (req.SetSetpointRequest, None, TypeError),
+        (req.SetSetpointRequest, True, TypeError),
+        (req.SetTimeRequest, "2026-10-27T19:27:46", TypeError),
+        (req.EchoRequest, "text", TypeError),
+        (req.EchoRequest, None, TypeError),
+    ],
+)
+def test_invalid_data_raises_on_creation(cls, data, error):
+    """Invalid data must fail when the request is created, before anything is sent"""
+    with pytest.raises(error):
+        cls(data)
 
 
 def test_base_request_cannot_be_instantiated():

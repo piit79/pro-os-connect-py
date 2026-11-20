@@ -549,11 +549,34 @@ class TestErrorDetails:
         assert client.get_protocol_version() == 1
         assert device.connections == 2
 
-    def test_invalid_request_argument_disconnects(self, client, simulated, device):
-        with pytest.raises(struct.error):
-            client.set_setpoint(-1)
+    @pytest.mark.parametrize(
+        ("setpoint", "error"),
+        [(-1, ValueError), (2**32, ValueError), (True, TypeError), ("150", TypeError), (150.0, TypeError)],
+    )
+    def test_invalid_argument_raises_before_connecting(self, client, simulated, device, setpoint, error):
+        with pytest.raises(error):
+            client.set_setpoint(setpoint)
         assert client.socket is None
+        assert device.connections == 0
         assert device.requests == []
+
+    @pytest.mark.parametrize(
+        ("method", "arg"),
+        [("echo", "text"), ("set_time", "2026-10-27T19:27:46")],
+    )
+    def test_invalid_argument_type_raises_before_connecting(self, client, simulated, device, method, arg):
+        with pytest.raises(TypeError):
+            getattr(client, method)(arg)
+        assert device.connections == 0
+
+    def test_invalid_argument_keeps_existing_connection(self, client, simulated, device):
+        """Nothing was sent, so there's no reason to drop a healthy connection"""
+        client.get_protocol_version()
+        with pytest.raises(ValueError):
+            client.set_setpoint(-1)
+        assert client.socket is not None
+        client.get_protocol_version()
+        assert device.connections == 1
 
 
 def build_raw_packet(protocol_packet: bytes) -> bytes:

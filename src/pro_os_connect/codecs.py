@@ -10,6 +10,13 @@ from .common import TelemetryFields
 T = TypeVar("T")
 
 
+def _check_type(data: object, expected: type | tuple[type, ...]) -> None:
+    """Raise TypeError if data is not an instance of the expected type(s)"""
+    if not isinstance(data, expected):
+        types = expected if isinstance(expected, tuple) else (expected,)
+        raise TypeError(f"Expected {' or '.join(t.__name__ for t in types)}, got {type(data).__name__}")
+
+
 class Codec(ABC, Generic[T]):
     """Base class for the payload encoder/decoder classes"""
 
@@ -71,8 +78,9 @@ class CodecEmpty(Codec[None]):
 class CodecRaw(Codec[bytes]):
     """Encoder/decoder class for a raw unformatted payload"""
 
-    def pack(self, data: bytes) -> bytes:
-        return data
+    def pack(self, data: bytes | bytearray) -> bytes:
+        _check_type(data, (bytes, bytearray))
+        return bytes(data)
 
     def unpack(self, payload: bytes) -> bytes:
         return payload
@@ -82,6 +90,7 @@ class CodecCstr(Codec[str]):
     """Encoder/decoder class for a null-terminated string payload"""
 
     def pack(self, data: str) -> bytes:
+        _check_type(data, str)
         return data.encode("utf-8") + b"\x00"
 
     def unpack(self, payload: bytes) -> str:
@@ -122,7 +131,13 @@ class CodecInt(Codec[int]):
         self._struct = CodecStruct(format)
 
     def pack(self, data: int) -> bytes:
-        return self._struct.pack((data,))
+        if isinstance(data, bool):  # bool is an int subclass, but True/False is almost certainly a mistake here
+            raise TypeError("Expected int, got bool")
+        _check_type(data, int)
+        try:
+            return self._struct.pack((data,))
+        except struct.error:
+            raise ValueError(f"{data} is out of range for struct format {self._struct.format!r}") from None
 
     def unpack(self, payload: bytes) -> int:
         (val,) = self._struct.unpack(payload)
@@ -137,6 +152,7 @@ class CodecIsoDateTime(Codec[datetime]):
         self._cstr = CodecCstr()
 
     def pack(self, data: datetime) -> bytes:
+        _check_type(data, datetime)
         length = 19 + (1 if self.precision > 0 else 0) + self.precision
         datetime_str = data.isoformat()[:length]
         return self._cstr.pack(datetime_str)
