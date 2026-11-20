@@ -148,22 +148,22 @@ exits. Blocks can be nested. With `keep_connection=True`, `hold_connection()` ha
 | `get_telemetry()` | `TelemetryFields` |
 | `get_uptime()` | `int`, seconds |
 | `is_running()` | `bool` |
-| `pump_start()`, `pump_stop()` | `bool` |
+| `pump_start()`, `pump_stop()` | `None` |
 | `get_setpoint()` | `int` |
 | `set_setpoint(setpoint: int, read_back: bool = True)` | `int \| None`, the new setpoint as read from the device if `read_back=True`, or `None` |
 | `get_time()` | `datetime` |
-| `set_time(date_obj: datetime)` | `bool`, sent without fractional seconds or time zone |
+| `set_time(date_obj: datetime)` | `None`; sent without fractional seconds or time zone |
 | `get_software_version()` | `str` |
 | `get_serial_number()` | `str` |
 | `get_cpu_serial_number()` | `str`, hex |
 | `get_network_configuration()` | `dict` |
 | `get_protocol_version()` | `int` |
 | `echo(test_payload: bytes \| None = None)` | `bool`, whether the device sent the payload back unchanged |
-| `reboot()` | `bool` |
+| `reboot()` | `None` |
 | `connect(force=False)`, `disconnect()` | Manage the connection explicitly |
 | `hold_connection()` | Context manager: keep one connection open for the requests in the block |
 
-Errors are raised as exceptions (see below).
+Errors are raised as exceptions (see below), so methods that only perform an action return `None`.
 
 `TelemetryFields` is a dataclass with these fields:
 

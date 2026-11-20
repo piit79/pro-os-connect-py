@@ -200,9 +200,8 @@ class ProOSConnect:
         response = self.send_request(EchoRequest(test_payload))
         return response.result == test_payload
 
-    def reboot(self) -> bool:
+    def reboot(self) -> None:
         self.send_request(RebootRequest())
-        return True
 
     def get_telemetry(self) -> TelemetryFields:
         response = self.send_request(GetTelemetryRequest())
@@ -223,17 +222,14 @@ class ProOSConnect:
         response = self.send_request(GetTimeRequest())
         return response.result
 
-    def set_time(self, date_obj: datetime) -> bool:
+    def set_time(self, date_obj: datetime) -> None:
         self.send_request(SetTimeRequest(date_obj))
-        return True
 
-    def pump_start(self) -> bool:
+    def pump_start(self) -> None:
         self.send_request(PumpStartRequest())
-        return True
 
-    def pump_stop(self) -> bool:
+    def pump_stop(self) -> None:
         self.send_request(PumpStopRequest())
-        return True
 
     def get_software_version(self) -> str:
         response = self.send_request(GetSoftwareVersionRequest())
