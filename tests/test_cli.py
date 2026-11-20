@@ -181,7 +181,6 @@ class TestArguments:
         assert seen == {
             "device": "127.0.0.1",
             "json": False,
-            "node": None,
             "precision": 1,
             "log_level": None,
             "command": "get_time",
