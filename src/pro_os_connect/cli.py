@@ -16,7 +16,6 @@ from . import (
     ProOSConnectResponseError,
     __version__,
 )
-from .common import Node
 
 UNSIGNED_LONG_MAX = 2**32 - 1
 
@@ -117,12 +116,6 @@ class ProOSConnectCli:
             required=True,
         )
         parser.add_argument("--json", "-j", action="store_true", help="Output in JSON format")
-        parser.add_argument(
-            "--node",
-            "-n",
-            choices=[Node.PRO_OS.name, Node.NETWORK_CARD.name],
-            help="Destination node",
-        )
         parser.add_argument(
             "--precision",
             "-p",
