@@ -150,29 +150,28 @@ class TestParseInvalid:
         with pytest.raises(ResponsePacketIncompleteError):
             packet.parse()
 
-    def test_bad_framing_phrase(self, caplog):
+    def test_bad_framing_phrase(self):
         packet = ResponsePacket(build_packet(Command.GET_TIME, framing_phrase=0xDEADBEEF))
         assert not packet.is_valid()
-        with pytest.raises(ResponseFramingPhraseError):
+        with pytest.raises(ResponseFramingPhraseError, match=f"{0xDEADBEEF:x}"):
             packet.parse()
-        assert "framing phrase" in caplog.text
 
     def test_bad_header_crc(self):
         packet = ResponsePacket(build_packet(Command.GET_TIME, header_crc=0))
         assert not packet.is_valid()
-        with pytest.raises(ResponseHeaderCrcError):
+        with pytest.raises(ResponseHeaderCrcError, match="received=0x0 calculated=0x9676fe10"):
             packet.parse()
 
     def test_corrupted_header_byte(self):
         data = bytearray(build_packet(Command.GET_TIME, b"abcd"))
         data[5] ^= 0x01
-        with pytest.raises(ResponseHeaderCrcError):
+        with pytest.raises(ResponseHeaderCrcError, match="received=0x8e6d3be8 calculated=0xc13a53f9"):
             ResponsePacket(bytes(data)).parse()
 
     def test_truncated_payload(self):
         packet = ResponsePacket(build_packet(Command.GET_TIME, b"abcdef")[:-1])
         assert not packet.is_valid()
-        with pytest.raises(ResponsePayloadLengthError):
+        with pytest.raises(ResponsePayloadLengthError, match="header=18 actual=17"):
             packet.parse()
 
     def test_trailing_extra_data(self):
@@ -182,27 +181,33 @@ class TestParseInvalid:
 
     def test_two_concatenated_packets_are_rejected(self):
         data = build_packet(Command.GET_TIME) * 2
-        with pytest.raises(ResponsePayloadLengthError):
+        with pytest.raises(ResponsePayloadLengthError, match="header=12 actual=40"):
             ResponsePacket(data).parse()
 
-    def test_length_mismatch_logged_at_debug_while_testing(self, caplog):
-        packet = ResponsePacket(build_packet(Command.GET_TIME, b"abcdef")[:-1])
-        with caplog.at_level(logging.DEBUG):
-            packet.is_valid()
-        assert [r.levelno for r in caplog.records] == [logging.DEBUG]
-
-    def test_length_mismatch_logged_at_error_when_parsing(self, caplog):
-        packet = ResponsePacket(build_packet(Command.GET_TIME, b"abcdef")[:-1])
-        with pytest.raises(ResponsePayloadLengthError):
-            packet.parse()
-        assert [r.levelno for r in caplog.records] == [logging.ERROR]
-
-    def test_bad_payload_crc(self, caplog):
+    def test_bad_payload_crc(self):
         packet = ResponsePacket(build_packet(Command.GET_TIME, b"abcd", payload_crc=0))
         assert not packet.is_valid()
-        with pytest.raises(ResponsePayloadCrcError):
+        with pytest.raises(ResponsePayloadCrcError, match=r"received=0x0 calculated=0x[0-9a-f]+$"):
             packet.parse()
-        assert "payload CRC mismatch" in caplog.text
+
+    @pytest.mark.parametrize(
+        ("data", "error"),
+        [
+            (build_packet(Command.GET_TIME, framing_phrase=0xDEADBEEF), ResponseFramingPhraseError),
+            (build_packet(Command.GET_TIME, header_crc=0), ResponseHeaderCrcError),
+            (build_packet(Command.GET_TIME, b"abcdef")[:-1], ResponsePayloadLengthError),
+            (build_packet(Command.GET_TIME, b"abcd", payload_crc=0), ResponsePayloadCrcError),
+        ],
+        ids=["framing", "header-crc", "length", "payload-crc"],
+    )
+    def test_errors_logged_only_at_debug(self, data, error, caplog):
+        """The exception carries the message; logging it at ERROR too would spam callers that handle it"""
+        packet = ResponsePacket(data)
+        with caplog.at_level(logging.DEBUG, logger="pro_os_connect"):
+            assert not packet.is_valid()
+            with pytest.raises(error) as exc_info:
+                packet.parse()
+        assert [(r.levelno, r.getMessage()) for r in caplog.records] == [(logging.DEBUG, str(exc_info.value))] * 2
 
     @pytest.mark.parametrize("command", list(CAPTURED), ids=lambda c: c.name)
     def test_corrupted_payload_of_real_packets(self, command):

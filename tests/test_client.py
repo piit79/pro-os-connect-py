@@ -27,6 +27,9 @@ from pro_os_connect.util import calculate_crc
 
 from .helpers import build_packet, parse_request
 
+# Payload CRC of a GET_TIME response with payload b"abcd" (covers the protocol header and payload)
+GET_TIME_ABCD_CRC = calculate_crc(build_packet(Command.GET_TIME, b"abcd")[16:])
+
 
 def sent_commands(device) -> list[Command]:
     return [parse_request(r)[0] for r in device.requests]
@@ -503,12 +506,12 @@ class TestErrorDetails:
             (
                 build_packet(Command.GET_TIME, framing_phrase=0x12345678),
                 ResponseFramingPhraseError,
-                f"Invalid framing phrase: Response framing phrase invalid: {0x12345678}",
+                "Invalid framing phrase: 0x12345678",
             ),
             (
                 build_packet(Command.GET_TIME, b"abcd", payload_crc=1),
                 ResponsePayloadCrcError,
-                "Response payload CRC error: Response payload CRC mismatch",
+                f"Response payload CRC error: received=0x1 calculated=0x{GET_TIME_ABCD_CRC:x}",
             ),
             (
                 build_packet(Command.GET_TIME, status=0x12345677),
