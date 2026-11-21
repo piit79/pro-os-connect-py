@@ -207,7 +207,9 @@ class TestParseInvalid:
             assert not packet.is_valid()
             with pytest.raises(error) as exc_info:
                 packet.parse()
-        assert [(r.levelno, r.getMessage()) for r in caplog.records] == [(logging.DEBUG, str(exc_info.value))] * 2
+        assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+            (logging.DEBUG, f"{type(exc_info.value).__name__}: {exc_info.value}")
+        ] * 2
 
     @pytest.mark.parametrize("command", list(CAPTURED), ids=lambda c: c.name)
     def test_corrupted_payload_of_real_packets(self, command):

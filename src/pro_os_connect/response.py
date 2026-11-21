@@ -125,7 +125,7 @@ class ResponsePacket:
             self._fail(ResponsePayloadCrcError(f"received=0x{payload_crc:x} calculated=0x{calculated_payload_crc:x}"))
 
     def _fail(self, error: ResponseError) -> NoReturn:
-        self.logger.debug("%s", error)
+        self.logger.debug("%s: %s", type(error).__name__, error)
         raise error
 
     def parse_protocol_packet(self):
