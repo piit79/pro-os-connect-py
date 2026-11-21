@@ -198,6 +198,11 @@ or `ValueError` (out of range, e.g. a negative setpoint) before anything is sent
 the connection untouched. They are bugs in the calling code, not device errors, so they
 don't derive from `ProOSConnectError`.
 
+### Thread safety
+
+The `ProOSConnect` instance isn't thread-safe: two threads sharing one client could interleave
+requests on the same socket
+
 ## Protocol notes
 
 The device's payload checksum is CRC-32/MPEG-2 computed over the data **zero-padded to
