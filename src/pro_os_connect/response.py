@@ -24,10 +24,6 @@ class ResponseError(Exception):
     description = "Response error"
 
 
-class ResponseNotDefinedError(ResponseError):
-    description = "Response not defined"
-
-
 class ResponsePacketIncompleteError(ResponseError):
     description = "Response packet incomplete"
 

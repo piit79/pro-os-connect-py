@@ -14,7 +14,6 @@ from pro_os_connect.response import (
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
     ResponseInternalError,
-    ResponseNotDefinedError,
     ResponsePacket,
     ResponsePacketIncompleteError,
     ResponsePayloadCrcError,
@@ -24,7 +23,6 @@ from pro_os_connect.response import (
 from .helpers import CAPTURED, build_packet, captured
 
 ERRORS = [
-    ResponseNotDefinedError,
     ResponsePacketIncompleteError,
     ResponseFramingPhraseError,
     ResponseHeaderCrcError,
