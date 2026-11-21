@@ -1,7 +1,7 @@
 import logging
 import socket
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
@@ -255,7 +255,7 @@ class ProOSConnect:
         response = self.send_request(GetCpuSerialNumberRequest())
         return response.result
 
-    def get_network_configuration(self) -> Mapping:
+    def get_network_configuration(self) -> dict:
         response = self.send_request(GetNetworkConfigurationRequest())
         return response.result
 

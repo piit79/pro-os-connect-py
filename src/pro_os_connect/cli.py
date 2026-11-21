@@ -172,7 +172,7 @@ class ProOSConnectCli:
             raise CliError("Echo response incorrect")
         return self.DONE
 
-    def get_telemetry(self):
+    def get_telemetry(self) -> dict[str, Any]:
         fields = self.poc.get_telemetry()
         res = asdict(fields)
         for f, v in res.items():
@@ -180,7 +180,7 @@ class ProOSConnectCli:
                 res[f] = round(v, self.args.precision)
         return res
 
-    def set_time(self):
+    def set_time(self) -> None:
         """Set time to current time"""
         return self.poc.set_time(datetime.now())
 
