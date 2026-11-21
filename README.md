@@ -69,6 +69,7 @@ is_running=0
 
 | Option | Description |
 |---|---|
+| `--version` | Library version |
 | `-d`, `--device HOST` | Hostname or IP address of the device (required) |
 | `-j`, `--json` | Output JSON instead of text |
 | `-p`, `--precision N` | Decimal places for telemetry values (default: 1) |
