@@ -187,7 +187,7 @@ Errors communicating with the device derive from `ProOSConnectError`:
 ProOSConnectError
 ├── ProOSConnectRequestError      sending the request failed
 │   ├── ProOSConnectConnectError  connection refused, closed or broken
-│   └── ProOSConnectTimeoutError  no response within the timeout
+│   └── ProOSConnectTimeoutError  request not sent or no response within the timeout
 ├── ProOSConnectResponseError     invalid response, undecodable payload or error status
 └── ProOSConnectInternalError     response command not supported by the library
 ```

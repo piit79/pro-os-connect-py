@@ -1,6 +1,7 @@
 import itertools
 import socket
 import struct
+import threading
 import time
 from datetime import datetime
 
@@ -64,7 +65,7 @@ class TestConnection:
     def test_connect_and_disconnect(self, client):
         client.connect()
         assert client.socket is not None
-        assert client.socket.getblocking() is False
+        assert client.socket.gettimeout() == client.timeout  # Timeout mode, not non-blocking
         client.disconnect()
         assert client.socket is None
 
@@ -480,6 +481,108 @@ class TestErrors:
         device.respond(build_packet(Command.GET_TIME, status=0x12345678))
         with pytest.raises(ProOSConnectResponseError):
             client.get_time()
+
+
+class TestReceiving:
+    def test_timeout_covers_whole_response(self, client, device):
+        """A device trickling the response must not extend the wait: each piece arrives well within the timeout,
+        but the whole response doesn't"""
+        packet = build_packet(Command.GET_TIME, b"2026-10-27T19:27:46\x00")
+        interval = client.timeout / 3
+
+        def trickle(request):
+            for byte in packet:
+                yield bytes([byte])
+                time.sleep(interval)
+
+        device.handler = trickle
+        start = time.monotonic()
+        with pytest.raises(ProOSConnectResponseError, match="incomplete"):
+            client.get_time()
+        assert time.monotonic() - start < client.timeout + interval
+        assert client.socket is None
+
+    def test_response_in_pieces_within_timeout(self, client, device):
+        packet = build_packet(Command.GET_TIME, b"2026-10-27T19:27:46\x00")
+
+        def in_pieces(request):
+            for piece in (packet[:10], packet[10:30], packet[30:]):
+                yield piece
+                time.sleep(0.02)
+
+        device.handler = in_pieces
+        assert client.get_time() == datetime(2026, 10, 27, 19, 27, 46)
+
+    def test_restores_socket_timeout_after_receiving(self, client, simulated):
+        """The next sendall() must get the full timeout, not what was left of the last receive"""
+        client.get_time()
+        assert client.socket is not None
+        assert client.socket.gettimeout() == client.timeout
+
+    def test_receive_timeout_is_not_reported_as_send_timeout(self, client, device):
+        with pytest.raises(ProOSConnectTimeoutError, match="Timeout waiting for response"):
+            client.get_time()
+
+
+class TestSending:
+    """Requests larger than the socket buffers must not fail just because the device reads them slowly"""
+
+    PACKET_SIZE = 2 * 1024 * 1024  # Far more than the shrunken socket buffers can hold
+    BUFFER_SIZE = 4096
+
+    @pytest.fixture
+    def server(self):
+        """Listening socket with a small receive buffer, so a large request fills it quickly"""
+        with socket.create_server(("127.0.0.1", 0)) as srv:
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.BUFFER_SIZE)
+            yield srv
+
+    @pytest.fixture
+    def large_request(self, monkeypatch):
+        # Patch the packet in directly: computing a real CRC over megabytes would make the test slow
+        monkeypatch.setattr(GetTimeRequest, "get_packet", lambda self: b"\x00" * TestSending.PACKET_SIZE)
+        return GetTimeRequest()
+
+    def connect(self, server, timeout):
+        poc = ProOSConnect("127.0.0.1", server.getsockname()[1], timeout=timeout)
+        poc.connect()
+        assert poc.socket is not None
+        poc.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, self.BUFFER_SIZE)
+        return poc
+
+    def test_waits_for_slow_reader(self, server, large_request):
+        """A non-blocking socket made sendall() fail with BlockingIOError as soon as the send buffer filled"""
+
+        def slow_device():
+            server.settimeout(5)
+            conn, _ = server.accept()
+            with conn:
+                conn.settimeout(5)
+                time.sleep(0.2)  # Let the client's send buffer fill up
+                received = 0
+                while received < self.PACKET_SIZE:
+                    chunk = conn.recv(65536)
+                    if not chunk:  # Client gave up and closed the connection
+                        return
+                    received += len(chunk)
+                conn.sendall(build_packet(Command.GET_TIME, b"2026-10-27T19:27:46\x00"))
+
+        thread = threading.Thread(target=slow_device)
+        thread.start()
+        poc = self.connect(server, timeout=2.0)
+        try:
+            response = poc.send_request(large_request)
+            assert response.result == datetime(2026, 10, 27, 19, 27, 46)
+        finally:
+            poc.disconnect()
+            thread.join()
+
+    def test_times_out_when_device_never_reads(self, server, large_request):
+        poc = self.connect(server, timeout=0.3)  # Connection completes in the backlog; nothing ever reads it
+        with pytest.raises(ProOSConnectTimeoutError, match="Timeout sending request") as exc_info:
+            poc.send_request(large_request)
+        assert isinstance(exc_info.value.__cause__, TimeoutError)
+        assert poc.socket is None
 
 
 class TestConnect:

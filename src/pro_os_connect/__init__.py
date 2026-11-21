@@ -1,5 +1,4 @@
 import logging
-import select
 import socket
 import time
 from collections.abc import Generator, Mapping
@@ -95,11 +94,11 @@ class ProOSConnect:
                 self.disconnect()
 
         try:
-            sock = socket.create_connection((self.host, self.port), timeout=self.timeout)
+            # Keep the socket in timeout mode: sendall() then waits for buffer space instead of failing with
+            # BlockingIOError on a non-blocking socket. _get_response_packet() narrows it to an overall deadline.
+            self.socket = socket.create_connection((self.host, self.port), timeout=self.timeout)
         except OSError as e:
             raise ProOSConnectConnectError(e) from e
-        sock.setblocking(False)
-        self.socket = sock
 
     def disconnect(self):
         if self.socket:
@@ -127,6 +126,8 @@ class ProOSConnect:
         err = True
         try:
             response = self._send_request(request)
+        except TimeoutError as e:  # socket.timeout; must come before OSError, its base class
+            raise ProOSConnectTimeoutError(f"Timeout sending request: {e}") from e
         except OSError as e:
             raise ProOSConnectConnectError(e) from e
         except ResponseCommandNotImplementedError as e:
@@ -172,22 +173,32 @@ class ProOSConnect:
         return response
 
     def _get_response_packet(self) -> ResponsePacket:
+        """Receive until the response packet is complete or the timeout runs out.
+
+        The timeout applies to the whole response, not to each recv(): every recv() only gets the time left until
+        the deadline, so a device sending the response slowly in pieces can't extend the wait.
+        Return the packet received so far; the caller tells a timeout (no data) from an incomplete packet.
+        """
         assert self.socket is not None  # to prevent type checker errors below
-        readers = [self.socket]
-        select_timeout = 0.1  # seconds
         resp_packet = ResponsePacket()
         # Monotonic clock: a wall-clock step (e.g. an NTP correction) must not shorten or extend the timeout
-        start_time = time.monotonic()
-        while not resp_packet.is_valid() and (time.monotonic() - start_time) < self.timeout:
-            read_ready, _, _ = select.select(readers, [], [], select_timeout)
-            if not read_ready:
-                continue
-
-            packet = self.socket.recv(4096)
-            if not packet:
-                raise ProOSConnectConnectError("Connection closed by device")
-            self.logger.debug("Received packet: %s", packet.hex())
-            resp_packet.append(packet)
+        deadline = time.monotonic() + self.timeout
+        try:
+            while not resp_packet.is_valid():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self.socket.settimeout(remaining)
+                try:
+                    data = self.socket.recv(4096)
+                except TimeoutError:  # Caught here, so send_request() doesn't report it as a send timeout
+                    break
+                if not data:
+                    raise ProOSConnectConnectError("Connection closed by device")
+                self.logger.debug("Received packet: %s", data.hex())
+                resp_packet.append(data)
+        finally:
+            self.socket.settimeout(self.timeout)  # Restore the full timeout for the next sendall()
 
         return resp_packet
 
