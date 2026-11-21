@@ -43,7 +43,10 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   release:
-    needs: publish
+    # TEMPORARY: create the release even if publishing to PyPI fails. The release still needs the build artifact,
+    # so a failed build skips it. Restore `needs: publish` (without the `if`) once publishing works.
+    needs: [build, publish]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
