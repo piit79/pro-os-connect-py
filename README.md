@@ -203,6 +203,14 @@ don't derive from `ProOSConnectError`.
 The `ProOSConnect` instance isn't thread-safe: two threads sharing one client could interleave
 requests on the same socket
 
+### Public API
+
+The public API, covered by semantic versioning, is what `pro_os_connect` exports in `__all__`:
+`ProOSConnect` with the methods and constructor arguments documented above, the exceptions,
+`TelemetryFields`, `TCP_PORT` and `__version__`. Everything else, including `send_request()`,
+the `request`, `response`, `codecs` and `common` modules, and attributes such as `socket`,
+is internal and may change in any release.
+
 ## Protocol notes
 
 The device's payload checksum is CRC-32/MPEG-2 computed over the data **zero-padded to

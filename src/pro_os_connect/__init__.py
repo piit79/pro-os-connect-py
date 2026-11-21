@@ -6,8 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 
-from pro_os_connect.common import TelemetryFields
-
+from .common import TelemetryFields
 from .request import (
     EchoRequest,
     GetCpuSerialNumberRequest,
@@ -33,6 +32,21 @@ from .response import (
     ResponsePacketIncompleteError,
     StatusCode,
 )
+
+# The public API. Everything else, including the request, response, codecs and common modules, is internal and may
+# change in any release.
+__all__ = [
+    "TCP_PORT",
+    "ProOSConnect",
+    "ProOSConnectConnectError",
+    "ProOSConnectError",
+    "ProOSConnectInternalError",
+    "ProOSConnectRequestError",
+    "ProOSConnectResponseError",
+    "ProOSConnectTimeoutError",
+    "TelemetryFields",
+    "__version__",
+]
 
 try:
     __version__ = version("pro-os-connect-py")
