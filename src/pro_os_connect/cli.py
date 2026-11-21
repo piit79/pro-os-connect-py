@@ -184,9 +184,6 @@ class ProOSConnectCli:
         """Set time to current time"""
         return self.poc.set_time(datetime.now())
 
-    def get_network_configuration(self):
-        return self.poc.get_network_configuration()
-
     def set_setpoint(self):
         setpoint = self.poc.set_setpoint(self.args.setpoint)
         self.output(
