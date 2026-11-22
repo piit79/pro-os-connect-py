@@ -121,7 +121,8 @@ class CodecTelemetryFields(Codec[TelemetryFields]):
         raise NotImplementedError()
 
     def unpack(self, payload: bytes) -> TelemetryFields:
-        return TelemetryFields.from_iterable(self._struct.unpack(payload))
+        *values, is_running = self._struct.unpack(payload)
+        return TelemetryFields.from_iterable((*values, bool(is_running)))
 
 
 class CodecInt(Codec[int]):

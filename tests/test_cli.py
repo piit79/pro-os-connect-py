@@ -333,7 +333,7 @@ class TestJsonOutput:
         assert data["setpoint"] == 150
         assert data["flow_rate"] == 4.96
         assert data["combined_pressure"] == 19.69
-        assert data["is_running"] == 0
+        assert data["is_running"] is False
         assert len(data) == 14
 
     def test_set_setpoint(self, run, simulated):

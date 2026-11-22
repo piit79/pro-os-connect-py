@@ -242,7 +242,7 @@ class ProOSConnect:
     def is_running(self) -> bool:
         """Return True if the pump is running"""
         fields = self.get_telemetry()
-        return bool(fields.is_running)
+        return fields.is_running
 
     def get_time(self) -> datetime:
         """Return device time as datetime object"""

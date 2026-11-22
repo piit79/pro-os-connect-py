@@ -186,7 +186,10 @@ class ProOSConnectCli:
         fields = self.poc.get_telemetry()
         res = asdict(fields)
         for f, v in res.items():
-            if isinstance(v, float):
+            if isinstance(v, bool):
+                if not self.args.json:  # Keep text output 1/0, like the is_running command
+                    res[f] = int(v)
+            elif isinstance(v, float):
                 res[f] = round(v, self.args.precision)
         return res
 

@@ -150,14 +150,19 @@ class TestCodecTelemetryFields:
         assert len(payload) == 36
         result = CodecTelemetryFields().unpack(payload)
         assert isinstance(result, TelemetryFields)
-        assert result == TelemetryFields(*self.FIELDS)
+        assert result == TelemetryFields(*self.FIELDS[:-1], True)
         assert result.timestamp == 10370300
         assert result.alarms == 1
         assert result.setpoint == 150
         assert result.flow_rate == 5.25
         assert result.pump_level == 512
         assert result.compensated_pre_blockage == 5
-        assert result.is_running == -1
+        assert result.is_running is True  # Any non-zero value means running
+
+    @pytest.mark.parametrize(("raw", "expected"), [(0, False), (1, True)])
+    def test_is_running_is_bool(self, raw, expected):
+        payload = struct.pack("<IIIffffHBBBBBb", *self.FIELDS[:-1], raw)
+        assert CodecTelemetryFields().unpack(payload).is_running is expected
 
     def test_pack_not_supported(self):
         with pytest.raises(NotImplementedError):

@@ -112,7 +112,7 @@ from pro_os_connect import ProOSConnect, ProOSConnectError
 poc = ProOSConnect("bofa.local")
 try:
     telemetry = poc.get_telemetry()
-    print(f"Flow rate: {telemetry.flow_rate:.1f}, running: {bool(telemetry.is_running)}")
+    print(f"Flow rate: {telemetry.flow_rate:.1f}, running: {telemetry.is_running}")
 
     setpoint = poc.set_setpoint(300)
     print(f"Setpoint set to {setpoint}")
@@ -178,7 +178,7 @@ Errors are raised as exceptions (see below), so methods that only perform an act
 | `pump_level` | `int` | Drive level (0 - 1000) |
 | `real_combined_blockage`, `real_pre_blockage`, `real_inlet_blockage` | `int` | [%] |
 | `compensated_combined_blockage`, `compensated_pre_blockage` | `int` | Blockage of the combined filter/pre-filter after accounting for the expected pressure drop across a new filter [%] |
-| `is_running` | `int` | 1 while the pump is running, 0 when stopped |
+| `is_running` | `bool` | Whether the pump is running |
 
 ### Errors
 

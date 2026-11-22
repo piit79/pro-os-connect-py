@@ -58,7 +58,7 @@ class StatusCode(Enum):
     COMMAND_FILE_EMPTY = 0xE0000004  # Requested File does not exist or is empty
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class TelemetryFields:
     timestamp: int
     alarms: int
@@ -73,7 +73,7 @@ class TelemetryFields:
     real_inlet_blockage: int
     compensated_combined_blockage: int
     compensated_pre_blockage: int
-    is_running: int
+    is_running: bool
 
     @classmethod
     def from_iterable(cls, iterable: Iterable) -> "TelemetryFields":

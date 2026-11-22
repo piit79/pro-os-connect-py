@@ -397,4 +397,4 @@ class TestRealDeviceResults:
         assert result.pre_pressure == pytest.approx(17.5108, abs=1e-4)
         assert result.inlet_pressure == pytest.approx(18.4419, abs=1e-4)
         assert result.pump_level == 0
-        assert result.is_running == 0
+        assert result.is_running is False

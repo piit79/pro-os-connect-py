@@ -241,7 +241,7 @@ class TestCommands:
         assert isinstance(result, TelemetryFields)
         assert result.setpoint == 150
         assert result.flow_rate == pytest.approx(4.95712)
-        assert result.is_running == 0
+        assert result.is_running is False
 
     def test_get_uptime(self, client, simulated):
         assert client.get_uptime() == 103627
