@@ -1,4 +1,5 @@
 import itertools
+import pickle
 import socket
 import struct
 import threading
@@ -16,6 +17,7 @@ from pro_os_connect import (
     ProOSConnectInternalError,
     ProOSConnectRequestError,
     ProOSConnectResponseError,
+    ProOSConnectStatusError,
     ProOSConnectTimeoutError,
 )
 from pro_os_connect.common import FRAMING_PHRASE, Command, StatusCode, TelemetryFields
@@ -433,9 +435,16 @@ class TestErrors:
     )
     def test_error_status(self, client, simulated, status):
         simulated.status = status
-        with pytest.raises(ProOSConnectResponseError, match=status.name):
+        with pytest.raises(ProOSConnectStatusError, match=f"^Error in response: {status.name}$") as exc_info:
             client.pump_start()
+        assert exc_info.value.status is status
+        assert isinstance(exc_info.value, ProOSConnectResponseError)  # Existing handlers keep catching it
         assert client.socket is None
+
+    def test_status_error_pickles(self):
+        error = pickle.loads(pickle.dumps(ProOSConnectStatusError(StatusCode.WRITE_PROTECTED)))
+        assert error.status is StatusCode.WRITE_PROTECTED
+        assert str(error) == "Error in response: WRITE_PROTECTED"
 
     def test_recovers_after_error(self, client, simulated, device):
         simulated.status = StatusCode.WRITE_PROTECTED

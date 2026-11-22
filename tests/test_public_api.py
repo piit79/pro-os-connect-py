@@ -8,7 +8,9 @@ PUBLIC_API = {
     "ProOSConnectInternalError",
     "ProOSConnectRequestError",
     "ProOSConnectResponseError",
+    "ProOSConnectStatusError",
     "ProOSConnectTimeoutError",
+    "StatusCode",
     "TelemetryFields",
     "__version__",
 }
@@ -35,3 +37,9 @@ def test_telemetry_fields_is_the_common_class():
     from pro_os_connect.common import TelemetryFields
 
     assert pro_os_connect.TelemetryFields is TelemetryFields
+
+
+def test_status_code_is_the_common_class():
+    from pro_os_connect.common import StatusCode
+
+    assert pro_os_connect.StatusCode is StatusCode

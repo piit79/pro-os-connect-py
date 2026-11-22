@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 
-from .common import TelemetryFields
+from .common import StatusCode, TelemetryFields
 from .request import (
     EchoRequest,
     GetCpuSerialNumberRequest,
@@ -30,7 +30,6 @@ from .response import (
     ResponseError,
     ResponsePacket,
     ResponsePacketIncompleteError,
-    StatusCode,
 )
 
 # The public API. Everything else, including the request, response, codecs and common modules, is internal and may
@@ -43,7 +42,9 @@ __all__ = [
     "ProOSConnectInternalError",
     "ProOSConnectRequestError",
     "ProOSConnectResponseError",
+    "ProOSConnectStatusError",
     "ProOSConnectTimeoutError",
+    "StatusCode",
     "TelemetryFields",
     "__version__",
 ]
@@ -75,6 +76,20 @@ class ProOSConnectTimeoutError(ProOSConnectRequestError):
 
 class ProOSConnectResponseError(ProOSConnectError):
     """Error raised when a response is received but indicates an error."""
+
+
+class ProOSConnectStatusError(ProOSConnectResponseError):
+    """Error raised when the device responds with an error status code.
+
+    :ivar status: The status code from the response, e.g. StatusCode.WRITE_PROTECTED
+    """
+
+    def __init__(self, status: StatusCode):
+        super().__init__(f"Error in response: {status.name}")
+        self.status = status
+
+    def __reduce__(self):  # Exceptions pickle their args, which here is the message, not the status
+        return type(self), (self.status,)
 
 
 class ProOSConnectInternalError(ProOSConnectError):
@@ -178,7 +193,7 @@ class ProOSConnect:
 
         if response_packet.status != StatusCode.OK:
             self.logger.debug("Response status: %s", response_packet.status.name)
-            raise ProOSConnectResponseError(f"Error in response: {response_packet.status.name}")
+            raise ProOSConnectStatusError(response_packet.status)
 
         response = response_packet.get_response()
         if response.COMMAND != request.COMMAND:

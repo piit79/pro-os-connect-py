@@ -189,8 +189,24 @@ ProOSConnectError
 ├── ProOSConnectRequestError      sending the request failed
 │   ├── ProOSConnectConnectError  connection refused, closed or broken
 │   └── ProOSConnectTimeoutError  request not sent or no response within the timeout
-├── ProOSConnectResponseError     invalid response, undecodable payload or error status
+├── ProOSConnectResponseError     invalid response or undecodable payload
+│   └── ProOSConnectStatusError   the device responded with an error status
 └── ProOSConnectInternalError     response command not supported by the library
+```
+
+`ProOSConnectStatusError.status` is the `StatusCode` the device sent, for example to tell a
+device configured as read-only from a rejected argument:
+
+```python
+from pro_os_connect import ProOSConnectStatusError, StatusCode
+
+try:
+    poc.set_setpoint(300)
+except ProOSConnectStatusError as e:
+    if e.status is StatusCode.WRITE_PROTECTED:
+        print("The device is read-only")
+    else:
+        raise
 ```
 
 Invalid arguments raise `TypeError` (wrong type, including `bool` where an `int` is expected)
@@ -207,7 +223,7 @@ requests on the same socket
 
 The public API, covered by semantic versioning, is what `pro_os_connect` exports in `__all__`:
 `ProOSConnect` with the methods and constructor arguments documented above, the exceptions,
-`TelemetryFields`, `TCP_PORT` and `__version__`. Everything else, including `send_request()`,
+`StatusCode`, `TelemetryFields`, `TCP_PORT` and `__version__`. Everything else, including `send_request()`,
 the `request`, `response`, `codecs` and `common` modules, and attributes such as `socket`,
 is internal and may change in any release.
 
