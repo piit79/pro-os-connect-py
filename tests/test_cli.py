@@ -190,6 +190,22 @@ class TestArguments:
         run("--log-level", "DEBUG", "get_time")
         assert logging.getLogger("pro_os_connect").level == logging.DEBUG
 
+    def test_repeated_runs_keep_one_handler(self, run, simulated):
+        """Each ProOSConnectCli configures the shared library logger; messages must not repeat once per instance"""
+        for _ in range(3):
+            code, _, err = run("-l", "DEBUG", "get_software_version")
+            assert code == 0
+            assert err.count("DEBUG: Sending packet:") == 1
+        cli_handlers = [h for h in logging.getLogger("pro_os_connect").handlers if h.get_name() == cli.LOG_HANDLER_NAME]
+        assert len(cli_handlers) == 1
+
+    def test_keeps_other_handlers(self, run, simulated):
+        logger = logging.getLogger("pro_os_connect")
+        other = logging.NullHandler()
+        logger.addHandler(other)
+        run("get_time")
+        assert other in logger.handlers
+
     def test_log_output_goes_to_stderr(self, run, simulated):
         code, out, err = run("-l", "DEBUG", "get_software_version")
         assert code == 0

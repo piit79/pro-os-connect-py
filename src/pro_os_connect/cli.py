@@ -18,6 +18,7 @@ from . import (
 )
 
 UNSIGNED_LONG_MAX = 2**32 - 1
+LOG_HANDLER_NAME = "pro_os_connect.cli"
 
 
 class CliError(Exception):
@@ -139,9 +140,18 @@ class ProOSConnectCli:
         return parser.parse_args()
 
     def setup_logging(self):
-        handler = logging.StreamHandler(stream=sys.stderr)
+        """Log to stderr through a single handler on the library logger.
+
+        The logger is shared by the whole process, so a handler added by an earlier ProOSConnectCli is replaced
+        instead of adding another one, which would print every message once per instance.
+        """
+        logger = self.poc.logger
+        for old in [h for h in logger.handlers if h.get_name() == LOG_HANDLER_NAME]:
+            logger.removeHandler(old)
+        handler = logging.StreamHandler(stream=sys.stderr)  # The current stderr, not an earlier instance's
+        handler.set_name(LOG_HANDLER_NAME)
         handler.setFormatter(logging.Formatter(fmt="{levelname}: {message}", style="{"))
-        self.poc.logger.addHandler(handler)
+        logger.addHandler(handler)
         if self.args.log_level:
             self.poc.logger.setLevel(self.args.log_level)
 
