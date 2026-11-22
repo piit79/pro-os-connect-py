@@ -502,6 +502,21 @@ class TestReceiving:
         assert time.monotonic() - start < client.timeout + interval
         assert client.socket is None
 
+    def test_deadline_passed_between_pieces(self, client, device, monkeypatch):
+        """The deadline can pass while a piece is being processed, before the next recv() starts.
+
+        test_timeout_covers_whole_response only hits this by chance (a byte arriving right at the deadline); here the
+        clock jumps past the deadline after the first piece is received.
+        """
+        device.respond(build_packet(Command.GET_TIME, b"2026-10-27T19:27:46\x00")[:20])  # Incomplete packet
+        real_monotonic = time.monotonic
+        readings = itertools.count()
+        # Reading 0 sets the deadline, reading 1 is the check before the first recv(); later ones are past it
+        monkeypatch.setattr(time, "monotonic", lambda: real_monotonic() + (3600 if next(readings) >= 2 else 0))
+        with pytest.raises(ProOSConnectResponseError, match="payload length incorrect: header=32 actual=4"):
+            client.get_time()
+        assert next(readings) == 3  # Deadline, first check, second check: no recv() after the deadline
+
     def test_response_in_pieces_within_timeout(self, client, device):
         packet = build_packet(Command.GET_TIME, b"2026-10-27T19:27:46\x00")
 
