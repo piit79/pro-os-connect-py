@@ -158,9 +158,10 @@ class ProOSConnect:
         return response
 
     def _send_request(self, request: Request) -> Response:
+        assert self.socket is not None  # to prevent type checker errors in sendall() below
         request_packet = request.get_packet()
         self.logger.debug("Sending packet: %s", request_packet.hex())
-        self.socket.sendall(request_packet)  # type: ignore
+        self.socket.sendall(request_packet)
 
         self.logger.debug("Waiting for response...")
         response_packet = self._get_response_packet()
