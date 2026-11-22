@@ -295,6 +295,14 @@ class TestTextOutput:
         run("echo", "--payload", "Žluťoučký kůň")
         assert parse_request(device.requests[-1])[3] == "Žluťoučký kůň".encode()
 
+    def test_echo_has_no_short_payload_option(self, run, device):
+        # -p is the global --precision option; a -p on echo would mean something else after the command
+        code, out, err = run("echo", "-p", "x")
+        assert code == 2
+        assert out == ""
+        assert "unrecognized arguments: -p x" in err
+        assert device.requests == []
+
     def test_echo_incorrect(self, run, device):
         device.respond(build_packet(Command.ECHO, b"wrong"))
         code, out, err = run("echo")

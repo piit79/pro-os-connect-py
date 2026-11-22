@@ -50,7 +50,7 @@ COMMANDS = [
     CliCommand(
         "echo",
         help="Send an echo request",
-        args=((("--payload", "-p"), {"type": str, "help": "Test payload for echo command"}),),
+        args=((("--payload",), {"type": str, "help": "Test payload for echo command"}),),
     ),
     CliCommand("reboot", help="Reboot the device"),
     CliCommand("get_telemetry", help="Get device telemetry"),
