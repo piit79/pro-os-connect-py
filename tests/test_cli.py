@@ -245,7 +245,7 @@ class TestTextOutput:
     def test_get_network_configuration(self, run, simulated):
         code, out, _ = run("get_network_configuration")
         assert code == 0
-        assert out == "manual={}\nwrite_enabled=True\n"
+        assert out == "manual={}\nwrite_enabled=1\n"
 
     def test_get_telemetry(self, run, simulated):
         code, out, _ = run("get_telemetry")

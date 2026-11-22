@@ -78,6 +78,8 @@ def output_text(data: str | bool | Mapping, error=False):
     stream = sys.stderr if error else sys.stdout
     if isinstance(data, Mapping):
         for key, value in data.items():
+            if isinstance(value, bool):  # 1/0, like a bool result below
+                value = int(value)
             print(f"{key}={value}", file=stream)
     elif isinstance(data, bool):
         print(1 if data else 0, file=stream)
@@ -186,10 +188,7 @@ class ProOSConnectCli:
         fields = self.poc.get_telemetry()
         res = asdict(fields)
         for f, v in res.items():
-            if isinstance(v, bool):
-                if not self.args.json:  # Keep text output 1/0, like the is_running command
-                    res[f] = int(v)
-            elif isinstance(v, float):
+            if isinstance(v, float):
                 res[f] = round(v, self.args.precision)
         return res
 
