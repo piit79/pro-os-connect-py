@@ -236,7 +236,7 @@ class ProOSConnect:
     def get_uptime(self) -> int:
         """Return device uptime in seconds."""
         fields = self.get_telemetry()
-        return int(fields.timestamp / 100.0)
+        return fields.timestamp // 100
 
     def is_running(self) -> bool:
         """Return True if the pump is running"""
