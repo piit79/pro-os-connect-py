@@ -71,7 +71,11 @@ class ProOSConnectConnectError(ProOSConnectRequestError):
 
 
 class ProOSConnectTimeoutError(ProOSConnectRequestError):
-    """Error raised when a timeout occurs while waiting for a response."""
+    """Error raised when the request can't be sent, or no response arrives, within the timeout.
+
+    A response that starts arriving but is still incomplete at the timeout raises ProOSConnectResponseError instead,
+    and a timeout while connecting raises ProOSConnectConnectError.
+    """
 
 
 class ProOSConnectResponseError(ProOSConnectError):
@@ -93,7 +97,7 @@ class ProOSConnectStatusError(ProOSConnectResponseError):
 
 
 class ProOSConnectInternalError(ProOSConnectError):
-    """Error raised when an internal error occurs."""
+    """Error raised when the library can't decode the response to its own request (a bug in the library)."""
 
 
 class ProOSConnect:
@@ -191,16 +195,19 @@ class ProOSConnect:
         except ResponseError as e:
             raise ProOSConnectResponseError(f"{e.description}: {e}") from e
 
+        # Check the command before the status (a status sent for another command can't be trusted) and before
+        # decoding, so a wrong command is always a response error. get_response() then only fails to find a response
+        # class for a request the library sent itself, which is a library bug (ProOSConnectInternalError).
+        if response_packet.command != request.COMMAND:
+            raise ProOSConnectResponseError(
+                f"Response command {response_packet.command.name} does not match request {request.COMMAND.name}"
+            )
+
         if response_packet.status != StatusCode.OK:
             self.logger.debug("Response status: %s", response_packet.status.name)
             raise ProOSConnectStatusError(response_packet.status)
 
-        response = response_packet.get_response()
-        if response.COMMAND != request.COMMAND:
-            raise ProOSConnectResponseError(
-                f"Response command {response.COMMAND.name} does not match request {request.COMMAND.name}"
-            )
-        return response
+        return response_packet.get_response()
 
     def _get_response_packet(self) -> ResponsePacket:
         """Receive until the response packet is complete or the timeout runs out.

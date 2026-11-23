@@ -84,6 +84,19 @@ class TestConnection:
         assert isinstance(exc_info.value.__cause__, OSError)
         assert poc.socket is None
 
+    def test_connect_timeout_is_connect_error(self, monkeypatch):
+        # Documented: a timeout while connecting is a connection problem, not ProOSConnectTimeoutError
+        def create_connection(address, timeout):
+            raise TimeoutError("timed out")
+
+        monkeypatch.setattr(socket, "create_connection", create_connection)
+        poc = ProOSConnect("127.0.0.1", timeout=0.3)
+        with pytest.raises(ProOSConnectConnectError) as exc_info:
+            poc.get_protocol_version()
+        assert not isinstance(exc_info.value, ProOSConnectTimeoutError)
+        assert isinstance(exc_info.value.__cause__, TimeoutError)
+        assert poc.socket is None
+
     def test_unresolvable_host(self):
         poc = ProOSConnect("host.invalid", timeout=0.3)
         with pytest.raises(ProOSConnectConnectError):
@@ -354,6 +367,23 @@ class TestMismatchedResponse:
         ):
             getattr(client, method)(*args)
 
+    @pytest.mark.parametrize(
+        "command",
+        [Command.GET_PROTOCOL_VERSION, Command.SOFTWARE_UPDATE_START],
+        ids=["with-response-class", "without-response-class"],
+    )
+    def test_mismatch_is_response_error_whether_or_not_decodable(self, client, device, command):
+        device.respond(build_packet(command))
+        with pytest.raises(ProOSConnectResponseError, match=f"{command.name} does not match request GET_TIME"):
+            client.get_time()
+        assert client.socket is None
+
+    def test_mismatch_reported_before_error_status(self, client, device):
+        device.respond(build_packet(Command.PUMP_STOP, status=StatusCode.WRITE_PROTECTED))
+        with pytest.raises(ProOSConnectResponseError, match="PUMP_STOP does not match request PUMP_START") as exc_info:
+            client.pump_start()
+        assert not isinstance(exc_info.value, ProOSConnectStatusError)
+
 
 class TestClockChanges:
     def test_wall_clock_jump_does_not_affect_timeout(self, client, simulated, monkeypatch):
@@ -478,12 +508,6 @@ class TestErrors:
         with pytest.raises(ProOSConnectConnectError) as exc_info:
             client.get_time()
         assert isinstance(exc_info.value.__cause__, BrokenPipeError)
-        assert client.socket is None
-
-    def test_unexpected_command_in_response(self, client, device):
-        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
-        with pytest.raises(ProOSConnectInternalError):
-            client.get_time()
         assert client.socket is None
 
     def test_unknown_status(self, client, device):
@@ -671,23 +695,19 @@ class TestErrorDetails:
         assert type(exc_info.value.__cause__) is cause
         assert client.socket is None
 
-    def test_internal_error(self, client, device):
-        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+    def test_internal_error(self, client, simulated, without_get_time_response):
         with pytest.raises(
             ProOSConnectInternalError,
-            match="Response command SOFTWARE_UPDATE_START not implemented",
+            match="Response command GET_TIME not implemented",
         ) as exc_info:
             client.get_time()
         assert isinstance(exc_info.value, ProOSConnectError)
         assert not isinstance(exc_info.value, (ProOSConnectRequestError, ProOSConnectResponseError))
         assert type(exc_info.value.__cause__) is ResponseCommandNotImplementedError
 
-    def test_recovers_after_internal_error(self, client, simulated, device):
-        handler = device.handler
-        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+    def test_recovers_after_internal_error(self, client, simulated, device, without_get_time_response):
         with pytest.raises(ProOSConnectInternalError):
             client.get_time()
-        device.handler = handler
         assert client.get_protocol_version() == 1
         assert device.connections == 2
 

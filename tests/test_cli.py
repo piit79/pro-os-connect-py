@@ -432,9 +432,15 @@ class TestErrors:
 
 
 class TestInternalError:
-    def test_unexpected_command_in_response(self, run, device):
-        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+    def test_missing_response_class(self, run, simulated, without_get_time_response):
         code, out, err = run("get_time")
         assert code == 7
         assert out == ""
-        assert err == "Internal error: Response command SOFTWARE_UPDATE_START not implemented\n"
+        assert err == "Internal error: Response command GET_TIME not implemented\n"
+
+    def test_unexpected_command_in_response(self, run, device):
+        device.respond(build_packet(Command.SOFTWARE_UPDATE_START))
+        code, out, err = run("get_time")
+        assert code == 6
+        assert out == ""
+        assert err == "Response error: Response command SOFTWARE_UPDATE_START does not match request GET_TIME\n"

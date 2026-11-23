@@ -99,8 +99,8 @@ that perform an action return `{"success": true}`. Errors are written as
 | 0 | Success |
 | 2 | Invalid command-line arguments |
 | 5 | Request error: the connection failed or the device did not respond in time |
-| 6 | Response error: the response was invalid, could not be decoded, or reported an error status |
-| 7 | Internal error: the device responded with an unsupported command |
+| 6 | Response error: the response was invalid, was for a different command, could not be decoded, or reported an error status |
+| 7 | Internal error: the library can't decode the response to its own request (a bug in the library) |
 | 8 | Other client error |
 | 9 | Command failed: invalid command, incorrect echo response |
 
@@ -187,11 +187,11 @@ Errors communicating with the device derive from `ProOSConnectError`:
 ```
 ProOSConnectError
 ├── ProOSConnectRequestError      sending the request failed
-│   ├── ProOSConnectConnectError  connection refused, closed or broken
+│   ├── ProOSConnectConnectError  connection refused, timed out, closed or broken
 │   └── ProOSConnectTimeoutError  request not sent or no response within the timeout
-├── ProOSConnectResponseError     invalid response or undecodable payload
+├── ProOSConnectResponseError     invalid or mismatched response, undecodable payload
 │   └── ProOSConnectStatusError   the device responded with an error status
-└── ProOSConnectInternalError     response command not supported by the library
+└── ProOSConnectInternalError     a bug in the library: no decoder for the response to its request
 ```
 
 `ProOSConnectStatusError.status` is the `StatusCode` the device sent, for example to tell a
@@ -217,7 +217,7 @@ don't derive from `ProOSConnectError`.
 ### Thread safety
 
 The `ProOSConnect` instance isn't thread-safe: two threads sharing one client could interleave
-requests on the same socket
+requests on the same socket.
 
 ### Public API
 

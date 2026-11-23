@@ -31,3 +31,12 @@ def simulated(device):
 @pytest.fixture(autouse=True)
 def no_readback_delay(monkeypatch):
     monkeypatch.setattr(pro_os_connect, "SETPOINT_READBACK_DELAY", 0)
+
+
+@pytest.fixture
+def without_get_time_response(monkeypatch):
+    """Remove the GET_TIME response class, as if a request had been added without one (a library bug)"""
+    from pro_os_connect import response
+    from pro_os_connect.common import Command
+
+    monkeypatch.delitem(response._registry, Command.GET_TIME)
