@@ -109,23 +109,23 @@ that perform an action return `{"success": true}`. Errors are written as
 ```python
 from pro_os_connect import ProOSConnect, ProOSConnectError
 
-poc = ProOSConnect("bofa.local")
 try:
-    telemetry = poc.get_telemetry()
-    print(f"Flow rate: {telemetry.flow_rate:.1f}, running: {telemetry.is_running}")
+    with ProOSConnect("bofa.local") as poc:
+        telemetry = poc.get_telemetry()
+        print(f"Flow rate: {telemetry.flow_rate:.1f}, running: {telemetry.is_running}")
 
-    setpoint = poc.set_setpoint(300)
-    print(f"Setpoint set to {setpoint}")
-    poc.pump_start()
+        setpoint = poc.set_setpoint(300)
+        print(f"Setpoint set to {setpoint}")
+        poc.pump_start()
 except ProOSConnectError as e:
     print(f"Device error: {e}")
-finally:
-    poc.disconnect()
 ```
 
 `ProOSConnect(host, port=2345, timeout=2.0, keep_connection=True)` connects on the first
-request and keeps the connection open for later requests until `disconnect()` is called.
-If a request fails, the connection is closed and the next request opens a new one.
+request and keeps the connection open for later requests until `disconnect()` is called,
+or until the `with` block exits. If a request fails, the connection is closed and the next
+request opens a new one. Without a `with` block, call `disconnect()` when done, e.g. in a
+`finally:` clause.
 
 The device accepts only one connection at a time. With `keep_connection=False`, the client
 connects for each request and disconnects right after it, so other clients can connect
@@ -162,6 +162,7 @@ exits. Blocks can be nested. With `keep_connection=True`, `hold_connection()` ha
 | `echo(test_payload: bytes \| None = None)` | `bool`, whether the device sent the payload back unchanged |
 | `reboot()` | `None` |
 | `connect(force=False)`, `disconnect()` | Manage the connection explicitly |
+| `with ProOSConnect(...) as poc:` | Context manager: disconnect when the block exits |
 | `hold_connection()` | Context manager: keep one connection open for the requests in the block |
 
 Errors are raised as exceptions (see below), so methods that only perform an action return `None`.

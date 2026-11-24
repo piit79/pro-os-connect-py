@@ -5,6 +5,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
+from types import TracebackType
 
 from .common import StatusCode, TelemetryFields
 from .request import (
@@ -137,6 +138,22 @@ class ProOSConnect:
         if self.socket:
             self.socket.close()
             self.socket = None
+
+    def __enter__(self) -> "ProOSConnect":
+        """Use the client as a context manager: `with ProOSConnect(host) as poc:` disconnects when the block exits.
+
+        Entering doesn't connect; the first request does, as without a with block. The client can be used again after
+        the block, which connects anew.
+        """
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.disconnect()
 
     @contextmanager
     def hold_connection(self) -> Generator["ProOSConnect", None, None]:

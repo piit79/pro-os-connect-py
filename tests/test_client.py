@@ -122,6 +122,48 @@ class TestConnection:
         assert ProOSConnect("example.invalid").keep_connection is True
 
 
+class TestContextManager:
+    def test_returns_client_and_connects_lazily(self, client, device):
+        with client as poc:
+            assert poc is client
+            assert client.socket is None
+        assert device.connections == 0
+
+    def test_disconnects_on_exit(self, client, simulated, device):
+        with client:
+            assert client.get_protocol_version() == 1
+            assert client.get_software_version() == "v2.0.0"
+            assert client.socket is not None
+        assert client.socket is None
+        assert device.connections == 1  # One connection for the whole block
+
+    def test_disconnects_and_propagates_exception(self, client, simulated):
+        with pytest.raises(RuntimeError, match="boom"), client:
+            client.get_protocol_version()
+            raise RuntimeError("boom")
+        assert client.socket is None
+
+    def test_disconnects_after_device_error(self, client, simulated):
+        simulated.status = StatusCode.WRITE_PROTECTED
+        with pytest.raises(ProOSConnectStatusError), client:
+            client.pump_start()
+        assert client.socket is None
+
+    def test_reusable(self, client, simulated, device):
+        for _ in range(2):
+            with client:
+                assert client.get_protocol_version() == 1
+            assert client.socket is None
+        assert device.connections == 2
+
+    def test_without_keep_connection(self, device, simulated):
+        with ProOSConnect("127.0.0.1", device.port, timeout=0.3, keep_connection=False) as poc:
+            assert poc.get_protocol_version() == 1
+            assert poc.socket is None  # Still disconnects after each request
+            assert poc.get_protocol_version() == 1
+        assert device.connections == 2
+
+
 class TestWithoutKeepConnection:
     @pytest.fixture
     def client(self, device):
